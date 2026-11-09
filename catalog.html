@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catalog | TINEX AUTO COMPONENTS – Bajaj & Piaggio Spares</title>
+  <meta name="description" content="Browse genuine Bajaj and Piaggio three-wheeler spare parts. Search by part number. Order via WhatsApp. Kenya." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-top">
+      Genuine Bajaj &amp; Piaggio parts · Order via WhatsApp · 
+      <a href="https://wa.me/254759417020" target="_blank" rel="noopener">0759 417 020</a>
+    </div>
+    <div class="header-main">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">T</div>
+        <div>
+          <div>TINEX</div>
+          <div style="font-size:0.7rem;font-weight:500;opacity:0.8;letter-spacing:0.04em;">AUTO COMPONENTS</div>
+        </div>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="catalog.html" class="active">Catalog</a>
+        <a href="catalog.html?brand=Bajaj">Bajaj</a>
+        <a href="catalog.html?brand=Piaggio">Piaggio</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+      <div class="header-actions">
+        <div class="search-box">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="search-input" placeholder="Search part number..." aria-label="Search" oninput="handleSearch(this.value)" />
+        </div>
+        <button class="cart-btn" onclick="openCart()" aria-label="Open cart">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6 5 2H2"/></svg>
+          <span class="cart-count" id="cart-count" style="display:none;">0</span>
+        </button>
+        <button class="mobile-menu-btn" onclick="openMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+  <div class="mobile-nav" id="mobile-nav">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+      <strong style="color:white;">Menu</strong>
+      <button onclick="closeMobileNav()" style="background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;">×</button>
+    </div>
+    <a href="index.html" onclick="closeMobileNav()">Home</a>
+    <a href="catalog.html" onclick="closeMobileNav()">Catalog</a>
+    <a href="catalog.html?brand=Bajaj" onclick="closeMobileNav()">Bajaj Parts</a>
+    <a href="catalog.html?brand=Piaggio" onclick="closeMobileNav()">Piaggio Parts</a>
+    <a href="contact.html" onclick="closeMobileNav()">Contact & Location</a>
+    <a href="https://wa.me/254759417020" target="_blank" rel="noopener" onclick="closeMobileNav()">WhatsApp Order</a>
+  </div>
+
+  <section class="section">
+    <div class="section-header">
+      <div>
+        <h2>Parts Catalog</h2>
+        <p class="text-muted" style="margin-top:0.25rem;">Browse by brand or search by part number. All prices in Kenya Shillings (KSh).</p>
+      </div>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" data-brand="all" onclick="setFilter('all')">All Parts</button>
+      <button class="filter-btn" data-brand="Bajaj" onclick="setFilter('Bajaj')">Bajaj</button>
+      <button class="filter-btn" data-brand="Piaggio" onclick="setFilter('Piaggio')">Piaggio</button>
+    </div>
+
+    <div class="products-grid" id="catalog-products">
+      <!-- Filled by JS -->
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div>
+        <h4>TINEX AUTO COMPONENTS</h4>
+        <p>Genuine Bajaj and Piaggio three-wheeler spare parts. Clear part numbers, WhatsApp ordering, local pickup.</p>
+      </div>
+      <div>
+        <h4>Quick Links</h4>
+        <p><a href="index.html">Home</a></p>
+        <p><a href="catalog.html">Full Catalog</a></p>
+        <p><a href="contact.html">Contact</a></p>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <p>WhatsApp: <a href="https://wa.me/254759417020">0759 417 020</a></p>
+        <p>Near Tik Tak, Mombasa</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 TINEX AUTO COMPONENTS</span>
+      <span><a href="#">Privacy</a> · <a href="#">Terms</a></span>
+    </div>
+  </footer>
+
+  <div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+  <div class="cart-drawer" id="cart-drawer">
+    <div class="cart-header">
+      <h3>Your Cart</h3>
+      <button class="cart-close" onclick="closeCart()">×</button>
+    </div>
+    <div class="cart-items" id="cart-items"></div>
+    <div class="cart-footer">
+      <div class="cart-total">
+        <span>Total</span>
+        <span id="cart-total">KSh 0</span>
+      </div>
+      <button class="btn btn-whatsapp" id="whatsapp-order" onclick="orderViaWhatsApp()" disabled>
+        📱 Order via WhatsApp
+      </button>
+      <p style="font-size:0.8rem;color:var(--text-muted);text-align:center;margin-top:0.75rem;">
+        We’ll confirm stock and arrange pickup.
+      </p>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script>
+    // Handle URL brand param and search
+    document.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const brand = params.get("brand");
+      if (brand === "Bajaj" || brand === "Piaggio") {
+        setFilter(brand);
+      }
+
+      window.handleSearch = function(q) {
+        const query = q.trim().toLowerCase();
+        const container = document.getElementById("catalog-products");
+        if (!query) {
+          const active = document.querySelector(".filter-btn.active");
+          renderCatalog(active ? active.dataset.brand : "all");
+          return;
+        }
+        const results = PRODUCTS.filter(p => 
+          p.title.toLowerCase().includes(query) ||
+          p.code.toLowerCase().includes(query) ||
+          p.brand.toLowerCase().includes(query)
+        );
+        container.innerHTML = results.length 
+          ? results.map(renderProductCard).join("") 
+          : `<p class="text-muted" style="grid-column:1/-1;text-align:center;padding:2rem;">No parts found for “${q}”. Try a different part number or brand.</p>`;
+      };
+    });
+  </script>
+</body>
+</html>

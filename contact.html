@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact & Location | TINEX AUTO COMPONENTS</title>
+  <meta name="description" content="Visit or contact TINEX AUTO COMPONENTS for Bajaj and Piaggio tuk-tuk spares. Near Tik Tak, Mombasa. WhatsApp 0759 417 020." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-top">
+      Genuine Bajaj &amp; Piaggio parts · Order via WhatsApp · 
+      <a href="https://wa.me/254759417020" target="_blank" rel="noopener">0759 417 020</a>
+    </div>
+    <div class="header-main">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">T</div>
+        <div>
+          <div>TINEX</div>
+          <div style="font-size:0.7rem;font-weight:500;opacity:0.8;letter-spacing:0.04em;">AUTO COMPONENTS</div>
+        </div>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="catalog.html">Catalog</a>
+        <a href="catalog.html?brand=Bajaj">Bajaj</a>
+        <a href="catalog.html?brand=Piaggio">Piaggio</a>
+        <a href="contact.html" class="active">Contact</a>
+      </nav>
+      <div class="header-actions">
+        <button class="cart-btn" onclick="openCart()" aria-label="Open cart">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6 5 2H2"/></svg>
+          <span class="cart-count" id="cart-count" style="display:none;">0</span>
+        </button>
+        <button class="mobile-menu-btn" onclick="openMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+  <div class="mobile-nav" id="mobile-nav">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+      <strong style="color:white;">Menu</strong>
+      <button onclick="closeMobileNav()" style="background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;">×</button>
+    </div>
+    <a href="index.html" onclick="closeMobileNav()">Home</a>
+    <a href="catalog.html" onclick="closeMobileNav()">Catalog</a>
+    <a href="catalog.html?brand=Bajaj" onclick="closeMobileNav()">Bajaj Parts</a>
+    <a href="catalog.html?brand=Piaggio" onclick="closeMobileNav()">Piaggio Parts</a>
+    <a href="contact.html" onclick="closeMobileNav()">Contact & Location</a>
+    <a href="https://wa.me/254759417020" target="_blank" rel="noopener" onclick="closeMobileNav()">WhatsApp Order</a>
+  </div>
+
+  <section class="section">
+    <div class="section-header">
+      <h2>Contact & Location</h2>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>📍 Visit Us</h3>
+        <p><strong>TINEX AUTO COMPONENTS</strong><br>
+        Near Tik Tak, Majengo / Tononoka area<br>
+        Mombasa, Kenya</p>
+        <ul style="margin-top:1rem;">
+          <li><strong>Opening hours</strong></li>
+          <li>Monday – Saturday: 8:00 AM – 6:00 PM</li>
+          <li>Sunday: Closed (or by appointment)</li>
+        </ul>
+        <div class="map-placeholder" style="height:220px;">
+          🗺️ Map Placeholder<br>
+          <span style="font-size:0.85rem;">Add Google Maps embed here<br>(search “Tik Tak Majengo Mombasa” or exact pin)</span>
+        </div>
+        <p class="mt-2" style="font-size:0.9rem;color:var(--text-muted);">
+          Landmark guidance: Near Tik Tak / Bible area. Call or WhatsApp before visiting so we can confirm stock and give precise directions.
+        </p>
+      </div>
+
+      <div class="info-card">
+        <h3>📞 Get in Touch</h3>
+        <ul>
+          <li><strong>WhatsApp / Call:</strong><br>
+            <a href="https://wa.me/254759417020" style="color:var(--secondary);font-weight:600;font-size:1.1rem;">0759 417 020</a>
+          </li>
+          <li class="mt-1"><strong>Alternative numbers:</strong><br>
+            0706 258 224 · 0799 363 677
+          </li>
+        </ul>
+        <a href="https://wa.me/254759417020?text=Hello%20TINEX%20AUTO%20COMPONENTS%2C%20I%20have%20a%20question%20about%20parts." 
+           target="_blank" rel="noopener" 
+           class="btn btn-primary mt-2" style="width:100%;justify-content:center;background:var(--whatsapp);">
+          📱 Message on WhatsApp
+        </a>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;" />
+
+        <h3 style="font-size:1.05rem;">Send a message</h3>
+        <form class="contact-form mt-1" id="contact-form" onsubmit="sendContactEmail(event)">
+          <div>
+            <label for="name">Your name</label>
+            <input type="text" id="name" name="name" required placeholder="e.g. John Kamau" />
+          </div>
+          <div>
+            <label for="phone">Phone / WhatsApp</label>
+            <input type="tel" id="phone" name="phone" required placeholder="07XX XXX XXX" />
+          </div>
+          <div>
+            <label for="email">Your email (optional)</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" />
+          </div>
+          <div>
+            <label for="message">Message</label>
+            <textarea id="message" name="message" required placeholder="Part number, quantity, or question..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Send Message</button>
+        </form>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem;">
+          Message opens your email app addressed to the business. For fastest reply also use WhatsApp.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0;">
+    <div class="info-card">
+      <h3>How ordering works</h3>
+      <ol style="padding-left:1.25rem;color:var(--text-muted);line-height:1.8;">
+        <li>Browse the <a href="catalog.html" style="color:var(--secondary);font-weight:600;">catalog</a> and add parts to your cart.</li>
+        <li>Open the cart and tap <strong>Order via WhatsApp</strong>.</li>
+        <li>We confirm stock and total price in the chat.</li>
+        <li>Pay and collect at the shop (or arrange delivery where available).</li>
+      </ol>
+      <p class="mt-2" style="font-size:0.9rem;">Wholesale and bulk orders for mechanics and fleets are welcome — message us for pricing.</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div>
+        <h4>TINEX AUTO COMPONENTS</h4>
+        <p>Genuine Bajaj &amp; Piaggio three-wheeler spares in Kenya.</p>
+      </div>
+      <div>
+        <h4>Quick Links</h4>
+        <p><a href="index.html">Home</a></p>
+        <p><a href="catalog.html">Catalog</a></p>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <p><a href="https://wa.me/254759417020">0759 417 020</a></p>
+        <p>Near Tik Tak, Mombasa</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 TINEX AUTO COMPONENTS</span>
+      <span><a href="#">Privacy Policy</a></span>
+    </div>
+  </footer>
+
+  <div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+  <div class="cart-drawer" id="cart-drawer">
+    <div class="cart-header">
+      <h3>Your Cart</h3>
+      <button class="cart-close" onclick="closeCart()">×</button>
+    </div>
+    <div class="cart-items" id="cart-items"></div>
+    <div class="cart-footer">
+      <div class="cart-total">
+        <span>Total</span>
+        <span id="cart-total">KSh 0</span>
+      </div>
+      <button class="btn btn-whatsapp" id="whatsapp-order" onclick="orderViaWhatsApp()" disabled>
+        📱 Order via WhatsApp
+      </button>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+</body>
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  
+  <title>TINEX AUTO COMPONENTS | Genuine Bajaj & Piaggio Three-Wheeler Spares – Kenya</title>
+  <meta name="description" content="Genuine Bajaj and Piaggio tuk-tuk spare parts in Kenya. Fast WhatsApp ordering, quality guaranteed. Pickup available near Tik Tak, Mombasa area." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      Genuine Bajaj &amp; Piaggio parts · Order via WhatsApp · 
+      <a href="https://wa.me/254759417020" target="_blank" rel="noopener">0759 417 020</a>
+    </div>
+    <div class="header-main">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">T</div>
+        <div>
+          <div>TINEX</div>
+          <div style="font-size:0.7rem;font-weight:500;opacity:0.8;letter-spacing:0.04em;">AUTO COMPONENTS</div>
+        </div>
+      </a>
+
+      <nav class="nav">
+        <a href="index.html" class="active">Home</a>
+        <a href="catalog.html">Catalog</a>
+        <a href="catalog.html?brand=Bajaj">Bajaj</a>
+        <a href="catalog.html?brand=Piaggio">Piaggio</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+
+      <div class="header-actions">
+        <div class="search-box">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" placeholder="Search part number..." aria-label="Search" />
+        </div>
+        <button class="cart-btn" onclick="openCart()" aria-label="Open cart">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6 5 2H2"/></svg>
+          <span class="cart-count" id="cart-count" style="display:none;">0</span>
+        </button>
+        <button class="mobile-menu-btn" onclick="openMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Nav -->
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+  <div class="mobile-nav" id="mobile-nav">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+      <strong style="color:white;">Menu</strong>
+      <button onclick="closeMobileNav()" style="background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;">×</button>
+    </div>
+    <a href="index.html" onclick="closeMobileNav()">Home</a>
+    <a href="catalog.html" onclick="closeMobileNav()">Catalog</a>
+    <a href="catalog.html?brand=Bajaj" onclick="closeMobileNav()">Bajaj Parts</a>
+    <a href="catalog.html?brand=Piaggio" onclick="closeMobileNav()">Piaggio Parts</a>
+    <a href="contact.html" onclick="closeMobileNav()">Contact & Location</a>
+    <a href="https://wa.me/254759417020" target="_blank" rel="noopener" onclick="closeMobileNav()">WhatsApp Order</a>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1>Genuine <span>Bajaj</span> &amp; <span>Piaggio</span><br>Three-Wheeler Spares</h1>
+        <p>Trusted supplier of quality tuk-tuk parts in Kenya. Browse by part number, add to cart, and order instantly via WhatsApp. Pickup available.</p>
+        <div class="hero-badges">
+          <span class="badge">✓ Genuine parts</span>
+          <span class="badge">✓ WhatsApp ordering</span>
+          <span class="badge">✓ Stock tracked</span>
+          <span class="badge">🇰🇪 Kenya Shillings</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
+          <a href="catalog.html" class="btn btn-primary">Shop all parts →</a>
+          <a href="https://wa.me/254759417020" target="_blank" rel="noopener" class="btn btn-secondary">Chat on WhatsApp</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="placeholder-card">
+          <div class="icon">🛺</div>
+          <div><strong>Hero Image Placeholder</strong></div>
+          <div style="font-size:0.85rem;opacity:0.7;">Tuk-tuk / three-wheeler photo</div>
+        </div>
+        <div class="placeholder-card small">
+          <div class="icon">▶️</div>
+          <div>Product video placeholder (looping)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Brand tiles -->
+  <section class="section">
+    <div class="section-header">
+      <h2>Shop by Brand</h2>
+    </div>
+    <div class="brand-grid">
+      <a href="catalog.html?brand=Bajaj" class="brand-card">
+        <div class="brand-visual brand-bajaj">BAJAJ</div>
+        <div class="brand-body">
+          <h3>Bajaj Spares</h3>
+          <p>Genuine parts for Bajaj three-wheelers and tuk-tuks. Gears, cables, suspension, filters and more.</p>
+          <span class="btn btn-primary" style="padding:0.5rem 1rem;font-size:0.9rem;">Shop Bajaj</span>
+        </div>
+      </a>
+      <a href="catalog.html?brand=Piaggio" class="brand-card">
+        <div class="brand-visual brand-piaggio">PIAGGIO</div>
+        <div class="brand-body">
+          <h3>Piaggio Spares</h3>
+          <p>Quality Piaggio Ape and three-wheeler components. Headlamps, mufflers, differentials and more.</p>
+          <span class="btn btn-primary" style="padding:0.5rem 1rem;font-size:0.9rem;">Shop Piaggio</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Featured Products -->
+  <section class="section" style="padding-top:0;">
+    <div class="section-header">
+      <h2>Featured Parts</h2>
+      <a href="catalog.html">View all →</a>
+    </div>
+    <div class="products-grid" id="featured-products">
+      <!-- Filled by JS -->
+    </div>
+  </section>
+
+  <!-- Location & Why us -->
+  <section class="section" style="padding-top:1rem;">
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>📍 Pickup Location</h3>
+        <p><strong>Near Tik Tak, Majengo / Tononoka area</strong><br>
+        Mombasa, Kenya</p>
+        <ul>
+          <li><strong>Hours:</strong> Mon–Sat 8:00 AM – 6:00 PM</li>
+          <li><strong>Phone / WhatsApp:</strong> <a href="https://wa.me/254759417020" style="color:var(--secondary);font-weight:600;">0759 417 020</a></li>
+          <li><strong>Alternative:</strong> 0759 417020</li>
+        </ul>
+        <div class="map-placeholder">
+          🗺️ Map Placeholder — Add Google Maps embed or link
+        </div>
+        <p class="mt-2" style="font-size:0.85rem;">Landmark: Near Tik Tak / Bible area. Call ahead for exact directions and to confirm stock.</p>
+      </div>
+      <div class="info-card">
+        <h3>Why choose TINEX?</h3>
+        <ul>
+          <li>✓ Genuine Bajaj &amp; Piaggio parts</li>
+          <li>✓ Part numbers clearly listed for easy matching</li>
+          <li>✓ Real-time stock visibility</li>
+          <li>✓ Instant WhatsApp ordering — no complicated checkout</li>
+          <li>✓ Fast local pickup</li>
+          <li>✓ Competitive Kenya Shilling pricing</li>
+        </ul>
+        <a href="https://wa.me/254759417020?text=Hello%20TINEX%2C%20I%20need%20help%20finding%20a%20part." target="_blank" rel="noopener" class="btn btn-primary mt-2" style="width:100%;justify-content:center;">
+          Ask us on WhatsApp
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Newsletter -->
+  <section class="section" style="padding-top:0;">
+    <div class="newsletter">
+      <h3>Stay updated on stock &amp; deals</h3>
+      <p>Get early access to new arrivals and wholesale offers for mechanics and fleet owners.</p>
+      <form class="newsletter-form" onsubmit="event.preventDefault(); alert('Thanks! We will notify you about deals and new stock.');">
+        <input type="email" placeholder="Your email address" required />
+        <button type="submit">Subscribe</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div>
+        <h4>TINEX AUTO COMPONENTS</h4>
+        <p>Your trusted source for genuine Bajaj and Piaggio three-wheeler spare parts in Kenya. Quality parts, clear part numbers, fast WhatsApp service.</p>
+      </div>
+      <div>
+        <h4>Quick Links</h4>
+        <p><a href="catalog.html">Full Catalog</a></p>
+        <p><a href="catalog.html?brand=Bajaj">Bajaj Parts</a></p>
+        <p><a href="catalog.html?brand=Piaggio">Piaggio Parts</a></p>
+        <p><a href="contact.html">Contact & Location</a></p>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <p>WhatsApp: <a href="https://wa.me/254759417020">0759 417 020</a></p>
+        <p>Alt: 0706 258 224</p>
+        <p>Near Tik Tak, Mombasa</p>
+        <p style="margin-top:0.75rem;"><a href="https://wa.me/254759417020">Order via WhatsApp →</a></p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 TINEX AUTO COMPONENTS. All rights reserved.</span>
+      <span>
+        <a href="#">Privacy Policy</a> · 
+        <a href="#">Pickup Terms</a>
+      </span>
+    </div>
+  </footer>
+
+  <!-- Cart Drawer -->
+  <div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+  <div class="cart-drawer" id="cart-drawer">
+    <div class="cart-header">
+      <h3>Your Cart</h3>
+      <button class="cart-close" onclick="closeCart()" aria-label="Close cart">×</button>
+    </div>
+    <div class="cart-items" id="cart-items"></div>
+    <div class="cart-footer">
+      <div class="cart-total">
+        <span>Total</span>
+        <span id="cart-total">KSh 0</span>
+      </div>
+      <button class="btn btn-whatsapp" id="whatsapp-order" onclick="orderViaWhatsApp()" disabled>
+        📱 Order via WhatsApp
+      </button>
+      <p style="font-size:0.8rem;color:var(--text-muted);text-align:center;margin-top:0.75rem;">
+        We’ll confirm stock, price and arrange pickup or delivery.
+      </p>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+</body>
+</html>
