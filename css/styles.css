@@ -1519,6 +1519,7 @@ img {
 
 .admin-restock-card {
   margin-bottom: 1rem;
+  border-left: 4px solid var(--accent);
 }
 
 .admin-restock-form {
@@ -1530,17 +1531,28 @@ img {
   align-self: end;
 }
 
+.admin-restock-form .btn {
+  min-height: 42px;
+}
+
 .admin-sale-stock-status {
   min-width: 120px;
 }
 
 .admin-sale-stock-status .stock-status {
-  margin-bottom: 0.35rem;
+  display: inline-flex;
+  margin-bottom: 0.4rem;
 }
 
 .admin-deduct-button {
   display: block;
   color: #047857;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.admin-deduct-button:hover {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
 }
 
 .admin-sale-form {
@@ -1655,6 +1667,14 @@ img {
 
   .admin-content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-restock-form {
+    grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.7fr);
+  }
+
+  .admin-restock-form .admin-form-actions {
+    grid-column: 1 / -1;
   }
 
 }
