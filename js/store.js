@@ -1,6 +1,6 @@
 // TINEX AUTO COMPONENTS - Store Logic
 
-const PRODUCTS = [
+const DEFAULT_PRODUCTS = [
   {
     id: "1a010161",
     title: "3-Speed Gear 2nd",
@@ -111,6 +111,35 @@ const PRODUCTS = [
   }
 ];
 
+const PRODUCTS_STORAGE_KEY = "tinex_products";
+const SALES_STORAGE_KEY = "tinex_sales";
+
+function loadProducts() {
+  const saved = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+  if (!saved) return DEFAULT_PRODUCTS.map(product => ({ ...product }));
+  const products = JSON.parse(saved);
+  if (!Array.isArray(products)) {
+    throw new Error("Saved inventory must be a list of products.");
+  }
+  return products;
+}
+
+let PRODUCTS = loadProducts();
+
+function persistProducts(products) {
+  localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
+  PRODUCTS = products;
+  window.dispatchEvent(new CustomEvent("tinex:inventory-updated"));
+}
+
+window.addEventListener("storage", event => {
+  if (event.key !== PRODUCTS_STORAGE_KEY || !event.newValue) return;
+  const products = JSON.parse(event.newValue);
+  if (!Array.isArray(products)) return;
+  PRODUCTS = products;
+  window.dispatchEvent(new CustomEvent("tinex:inventory-updated"));
+});
+
 const WHATSAPP_NUMBER = "254759417020"; // international format without +
 
 // Business email that receives contact form messages.
@@ -126,7 +155,7 @@ function saveCart() {
 
 function addToCart(productId) {
   const product = PRODUCTS.find(p => p.id === productId);
-  if (!product || product.stock === 0) return;
+  if (!product || product.stock <= 0) return;
 
   const existing = cart.find(item => item.id === productId);
   if (existing) {
@@ -141,6 +170,8 @@ function addToCart(productId) {
 function updateQty(productId, delta) {
   const item = cart.find(i => i.id === productId);
   if (!item) return;
+  const product = PRODUCTS.find(p => p.id === productId);
+  if (delta > 0 && (!product || item.qty >= product.stock)) return;
   item.qty += delta;
   if (item.qty <= 0) {
     cart = cart.filter(i => i.id !== productId);
@@ -243,29 +274,41 @@ function orderViaWhatsApp() {
 }
 
 function renderProductCard(p) {
-  const soldOut = p.stock === 0;
+  const soldOut = p.stock <= 0;
+  const image = p.image
+    ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.title)}" loading="lazy">`
+    : `<div class="icon">⚙️</div><div>Image Placeholder</div>`;
   return `
-    <div class="product-card" data-brand="${p.brand}">
+    <div class="product-card" data-brand="${escapeHTML(p.brand)}">
       <div class="product-image">
-        ${soldOut ? '<span class="product-badge soldout">Sold out</span>' : (p.stock < 6 ? '<span class="product-badge">Low stock</span>' : '')}
-        <div>
-          <div class="icon">⚙️</div>
-          <div>Image Placeholder</div>
-          <div style="font-size:0.75rem;margin-top:0.25rem;opacity:0.7;">${p.brand}</div>
+        ${soldOut ? '<span class="product-badge soldout">Out of stock</span>' : (p.stock < 6 ? '<span class="product-badge">Low stock</span>' : '')}
+        <div class="${p.image ? "product-photo" : ""}">
+          ${image}
+          ${p.image ? "" : `<div style="font-size:0.75rem;margin-top:0.25rem;opacity:0.7;">${escapeHTML(p.brand)}</div>`}
         </div>
       </div>
       <div class="product-body">
-        <div class="product-title">${p.title}</div>
-        <div class="product-code">${p.code}</div>
+        <div class="product-title">${escapeHTML(p.title)}</div>
+        <div class="product-code">${escapeHTML(p.code)}</div>
         <div class="product-meta">
           <div class="product-price">${formatPrice(p.price)}</div>
           <button class="btn-add" ${soldOut ? "disabled" : ""} onclick="addToCart('${p.id}')">
-            ${soldOut ? "Sold out" : "Add"}
+            ${soldOut ? "Out of stock" : "Add"}
           </button>
         </div>
       </div>
     </div>
   `;
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
 }
 
 function renderFeaturedProducts() {
@@ -351,4 +394,11 @@ document.addEventListener("DOMContentLoaded", () => {
   updateCartUI();
   renderFeaturedProducts();
   renderCatalog();
+});
+
+window.addEventListener("tinex:inventory-updated", () => {
+  updateCartUI();
+  renderFeaturedProducts();
+  const activeFilter = document.querySelector(".filter-btn.active");
+  renderCatalog(activeFilter?.dataset.brand || "all");
 });

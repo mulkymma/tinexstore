@@ -21,6 +21,9 @@ A clean, professional static website redesign of the TINEX Auto Components Shopi
 - Product catalog with Bajaj / Piaggio filters
 - Search by title or part number
 - Cart with localStorage persistence
+- Inventory admin at `admin.html` for stock, prices, product images and restock alerts
+- Manual completed-sale logging with day, week and month summaries
+- Customer catalog reflects admin inventory updates and displays out-of-stock badges
 - One-tap **Order via WhatsApp** that pre-fills the full order list
 - Contact page with location, hours, form and WhatsApp CTA
 - Professional navy + amber color scheme suitable for auto parts
@@ -33,8 +36,12 @@ Open `index.html` in any modern browser (or serve the folder with any static ser
 # Example
 cd tinex-store
 python3 -m http.server 8080
-# then visit http://localhost:8080
+# then visit http://localhost:8080 or http://localhost:8080/admin.html
 ```
+
+Inventory and sales data are stored in the browser's localStorage and shared between pages opened from the same site origin. This static demo has no admin authentication, server-side database, or cross-device synchronization; do not expose it as a production admin system without adding those protections. WhatsApp orders are enquiries and must be recorded manually as completed sales.
+
+The admin demo password is `tinex-demo`. It is only a browser-side gate: the password is visible in `js/admin.js`, so it must not be used to protect a live store.
 
 ## WhatsApp number used
 
@@ -57,8 +64,10 @@ tinex-store/
 ├── index.html          # Homepage
 ├── catalog.html        # Full product catalog + filters
 ├── contact.html        # Location, hours, contact form
+├── admin.html          # Inventory dashboard, product editor and sales reports
 ├── css/styles.css      # All styles
 ├── js/store.js         # Products data, cart, WhatsApp logic
+├── js/admin.js         # Inventory and sales management
 └── README.md
 ```
 
