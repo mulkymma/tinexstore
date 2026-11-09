@@ -22,7 +22,10 @@ A clean, professional static website redesign of the TINEX Auto Components Shopi
 - Search by title or part number
 - Cart with localStorage persistence
 - Inventory admin at `admin.html` for stock, prices, product images and restock alerts
-- Manual completed-sale logging with day, week and month summaries
+- Separate Super admin and Seller demo roles
+- Sellers can view inventory and record one product's daily sold quantity; each sale automatically deducts that quantity from stock
+- Only Super admins can add stock, edit products, or confirm WhatsApp orders directly
+- Day, week and month sales summaries with clear deducted/pending stock status
 - Customer catalog reflects admin inventory updates and displays out-of-stock badges
 - One-tap **Order via WhatsApp** that pre-fills the full order list
 - Contact page with location, hours, form and WhatsApp CTA
@@ -39,9 +42,9 @@ python3 -m http.server 8080
 # then visit http://localhost:8080 or http://localhost:8080/admin.html
 ```
 
-Inventory and sales data are stored in the browser's localStorage and shared between pages opened from the same site origin. This static demo has no admin authentication, server-side database, or cross-device synchronization; do not expose it as a production admin system without adding those protections. WhatsApp orders are enquiries and must be recorded manually as completed sales.
+Inventory and sales data are stored in the browser's localStorage and shared between pages opened from the same site origin. Sign in to `admin.html` with the Super admin demo password `tinex-demo` or Seller demo password `seller-demo`. Sellers can view inventory and record one product and quantity at a time; saving the sale immediately reduces inventory and adds a sold/deducted entry to the sales report. The Super admin can add stock using the Add stock form, edit products, and confirm WhatsApp orders that have not already been recorded by a Seller. Do not record the same sale twice. Regular `wa.me` links cannot notify the site when a message is sent or confirmed. This static demo has no server-side database or cross-device synchronization, and its client-side roles/passwords can be bypassed; do not expose it as a production admin system without adding server-side authentication and storage.
 
-The admin demo password is `tinex-demo`. It is only a browser-side gate: the password is visible in `js/admin.js`, so it must not be used to protect a live store.
+The demo passwords are `tinex-demo` (Super admin) and `seller-demo` (Seller). They are visible in `js/admin.js` and are only browser-side gates; do not use them to protect a live store.
 
 ## WhatsApp number used
 
