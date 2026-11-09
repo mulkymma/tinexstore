@@ -9,6 +9,11 @@ window.TINEX_ADMIN_AUTH = {
     const user = users.find(account =>
       account.active && account.username.toLowerCase() === normalizedUsername && account.password === password
     );
-    return user ? { role: "seller", name: user.name, username: user.username } : null;
+    return user ? {
+      role: user.role || "seller",
+      name: user.name,
+      username: user.username,
+      userId: user.id
+    } : null;
   }
 };

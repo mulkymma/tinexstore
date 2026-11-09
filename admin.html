@@ -28,7 +28,7 @@
       <div class="admin-login-icon">T</div>
       <p class="admin-eyebrow">TINEX SELLER</p>
       <h1>Seller sign in</h1>
-      <p class="text-muted">Sign in to record sales and view current inventory.</p>
+      <p class="text-muted">Sign in to manage inventory or record sales, depending on your access.</p>
       <form id="admin-login-form" class="admin-login-form">
         <label for="admin-username">Username</label>
         <input id="admin-username" name="username" type="text" autocomplete="username" required />
@@ -61,8 +61,9 @@
     <nav class="admin-tabs" aria-label="Admin sections">
       <button class="admin-tab active" data-panel="overview" data-super-admin-only type="button">Overview</button>
       <button class="admin-tab" data-panel="inventory" type="button">Inventory</button>
-      <button class="admin-tab" data-panel="sales" type="button">Sales</button>
-      <button class="admin-tab" data-panel="users" data-super-admin-only type="button">Seller access</button>
+      <button class="admin-tab" id="sales-tab" data-panel="sales" type="button">Sales</button>
+      <button class="admin-tab" data-panel="users" data-super-admin-only type="button">Staff access</button>
+      <button class="admin-tab" data-panel="activity" data-super-admin-only type="button">Inventory activity</button>
     </nav>
     <div id="admin-message" class="admin-message" role="status" aria-live="polite"></div>
 
@@ -105,7 +106,7 @@
     <section class="admin-panel" id="panel-inventory">
       <div class="admin-section-heading">
         <div><h2>Products &amp; stock</h2><p id="inventory-intro">Add new parts or update their details, price, photo and quantity.</p></div>
-        <button type="button" class="btn btn-primary" id="new-product-button" data-super-admin-only>＋ Add product</button>
+        <button type="button" class="btn btn-primary" id="new-product-button" data-inventory-access>＋ Add product</button>
       </div>
       <section class="admin-card admin-form-card" id="product-form-card" hidden>
         <div class="admin-card-heading">
@@ -135,16 +136,16 @@
         <form id="seller-sale-form" class="admin-form admin-sale-form">
           <label>Product<select name="productId" id="seller-product" required></select></label>
           <label>Quantity sold<input name="quantity" type="number" min="1" step="1" value="1" required /></label>
-          <label class="admin-order-date">Date &amp; time<input name="soldAt" id="seller-sale-date" type="datetime-local" required /></label>
-          <div class="admin-form-actions admin-form-wide"><button class="btn btn-primary" type="submit">Add to daily report</button></div>
+          <div class="admin-form-actions admin-form-wide"><button class="btn btn-primary" type="submit">Add to daily report</button><span class="admin-field-hint">Sale time is recorded automatically.</span></div>
         </form>
       </section>
-      <section class="admin-card admin-restock-card" data-super-admin-only>
-        <div class="admin-card-heading"><div><h2>Add stock</h2><p>Only a Super admin can add units back into inventory.</p></div></div>
+      <section class="admin-card admin-restock-card" data-inventory-access>
+        <div class="admin-card-heading"><div><h2>Adjust stock</h2><p>Stock changes are recorded with the staff member and exact time.</p></div></div>
         <form id="restock-form" class="admin-form admin-restock-form">
           <label>Product<select name="productId" id="restock-product" required></select></label>
-          <label>Quantity to add<input name="quantity" type="number" min="1" step="1" value="1" required /></label>
-          <div class="admin-form-actions"><button type="submit" class="btn btn-primary">Add to inventory</button></div>
+          <label>Action<select name="action" id="stock-action"><option value="add">Add stock</option><option value="deduct">Deduct stock</option></select></label>
+          <label>Quantity<input name="quantity" type="number" min="1" step="1" value="1" required /></label>
+          <div class="admin-form-actions"><button type="submit" class="btn btn-primary">Save stock adjustment</button></div>
         </form>
       </section>
       <section class="admin-card">
@@ -168,7 +169,7 @@
       <section class="admin-card admin-sale-entry" id="order-entry-card" data-seller-only>
         <div class="admin-card-heading"><div><h2>Confirm WhatsApp order</h2><p>Use this for completed WhatsApp orders that have not already been recorded. Confirming an order deducts the items from stock.</p></div></div>
         <form id="sale-form" class="admin-form admin-sale-form">
-          <label class="admin-order-date">Order date &amp; time<input name="soldAt" id="sale-date" type="datetime-local" required /></label>
+          <p class="admin-field-hint admin-form-wide">Order confirmation time is recorded automatically.</p>
           <div class="admin-order-items admin-form-wide" id="order-items"></div>
           <div class="admin-form-actions admin-form-wide">
             <button type="button" class="btn btn-outline" id="add-order-item">＋ Add another item</button>
@@ -201,13 +202,14 @@
 
     <section class="admin-panel" id="panel-users" data-super-admin-only>
       <div class="admin-section-heading">
-        <div><h2>Seller access</h2><p>Create named seller logins and revoke access when needed.</p></div>
+        <div><h2>Staff access</h2><p>Create Seller or Inventory staff logins and revoke access when needed.</p></div>
       </div>
       <section class="admin-card admin-user-form-card">
-        <div class="admin-card-heading"><div><h2>Authorize a seller</h2><p>Each account identifies the seller on their recorded sales.</p></div></div>
+        <div class="admin-card-heading"><div><h2>Authorize staff</h2><p>Choose whether each person records sales or manages inventory.</p></div></div>
         <form id="seller-user-form" class="admin-form admin-user-form">
-          <label>Seller name<input name="name" required maxlength="80" autocomplete="name" /></label>
+          <label>Staff name<input name="name" required maxlength="80" autocomplete="name" /></label>
           <label>Username<input name="username" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+" autocomplete="off" /></label>
+          <label>Role<select name="role" required><option value="seller">Seller</option><option value="inventory-manager">Inventory staff</option></select></label>
           <label>Password
             <div class="admin-password-field">
               <input id="seller-password" name="password" type="password" required minlength="8" autocomplete="new-password" />
@@ -224,17 +226,35 @@
               </button>
             </div>
           </label>
-          <div class="admin-form-actions admin-form-wide"><button class="btn btn-primary" type="submit">Add seller access</button></div>
+          <div class="admin-form-actions admin-form-wide"><button class="btn btn-primary" type="submit">Add staff access</button></div>
         </form>
       </section>
       <section class="admin-card">
-        <div class="admin-card-heading"><div><h2>Authorized sellers</h2><p>Seller passwords are not shown here.</p></div></div>
+        <div class="admin-card-heading"><div><h2>Authorized staff</h2><p>Account passwords are not shown here.</p></div></div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Name</th><th>Username</th><th>Access</th><th>Added</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Access</th><th>Added</th><th></th></tr></thead>
             <tbody id="seller-users-table"></tbody>
           </table>
         </div>
+      </section>
+    </section>
+
+    <section class="admin-panel" id="panel-activity" data-super-admin-only>
+      <div class="admin-section-heading"><div><h2>Inventory staff activity</h2><p>See who signed in, edited products, or added/deducted stock, and when.</p></div></div>
+      <section class="admin-card">
+        <div class="admin-card-heading"><div><h2>Staff sessions</h2><p>Login and logout times for each authorized user.</p></div></div>
+        <div class="admin-table-wrap"><table class="admin-table">
+          <thead><tr><th>Staff</th><th>Role</th><th>Logged in</th><th>Logged out</th></tr></thead>
+          <tbody id="admin-sessions-table"></tbody>
+        </table></div>
+      </section>
+      <section class="admin-card">
+        <div class="admin-card-heading"><div><h2>Inventory changes</h2><p>Product edits, stock additions, and deductions with actor and time.</p></div></div>
+        <div class="admin-table-wrap"><table class="admin-table">
+          <thead><tr><th>Product / change</th><th>Action</th><th>By</th><th>Time</th></tr></thead>
+          <tbody id="inventory-audit-table"></tbody>
+        </table></div>
       </section>
     </section>
 

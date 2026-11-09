@@ -1,7 +1,10 @@
 const LOW_STOCK_DEFAULT = 5;
 const ADMIN_SESSION_KEY = "tinex_admin_unlocked";
 const ADMIN_USER_SESSION_KEY = "tinex_admin_user";
+const ADMIN_AUDIT_SESSION_KEY = "tinex_audit_session";
 const SELLER_USERS_STORAGE_KEY = "tinex_seller_users";
+const ADMIN_SESSIONS_STORAGE_KEY = "tinex_admin_sessions";
+const INVENTORY_AUDIT_STORAGE_KEY = "tinex_inventory_audit";
 const DEFAULT_SELLER = {
   id: "seller-demo",
   name: "Demo Seller",
@@ -15,6 +18,7 @@ let activePeriod = "day";
 let productImage = "";
 let currentRole = null;
 let currentUser = null;
+let currentAuditSessionId = null;
 let sellerUsers = readSellerUsers();
 
 function readSales() {
@@ -33,16 +37,187 @@ function readSellerUsers() {
   return users;
 }
 
+function readAuditList(storageKey, label) {
+  const saved = localStorage.getItem(storageKey);
+  if (!saved) return [];
+  const entries = JSON.parse(saved);
+  if (!Array.isArray(entries)) throw new Error(`Saved ${label} must be a list.`);
+  return entries;
+}
+
+function getUserRole(user) {
+  return user.role || "seller";
+}
+
+function isInventoryEditor() {
+  return currentRole === "super-admin" || currentRole === "inventory-manager";
+}
+
+function isAuthorizedStaff() {
+  if (!["seller", "inventory-manager"].includes(currentRole)) return false;
+  const user = readSellerUsers().find(account =>
+    account.active &&
+    account.username.toLowerCase() === currentUser?.username.toLowerCase() &&
+    getUserRole(account) === currentRole
+  );
+  if (user) return true;
+  endCurrentAuditSession();
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+  currentRole = null;
+  currentUser = null;
+  document.getElementById("admin-dashboard").hidden = true;
+  document.getElementById("admin-login").hidden = false;
+  document.getElementById("admin-login-error").textContent = "Your access was revoked. Contact the Super admin.";
+  return false;
+}
+
+function recordStaffSession(user) {
+  const id = `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const sessions = readAuditList(ADMIN_SESSIONS_STORAGE_KEY, "staff sessions");
+  sessions.push({
+    id,
+    username: user.username,
+    name: user.name,
+    role: user.role,
+    loginAt: new Date().toISOString(),
+    logoutAt: null
+  });
+  localStorage.setItem(ADMIN_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+  currentAuditSessionId = id;
+  try {
+    sessionStorage.setItem(ADMIN_AUDIT_SESSION_KEY, id);
+  } catch (error) {
+    const session = sessions.find(item => item.id === id);
+    session.logoutAt = new Date().toISOString();
+    localStorage.setItem(ADMIN_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+    throw error;
+  }
+}
+
+function endCurrentAuditSession() {
+  const id = currentAuditSessionId || sessionStorage.getItem(ADMIN_AUDIT_SESSION_KEY);
+  if (!id) return;
+  const sessions = readAuditList(ADMIN_SESSIONS_STORAGE_KEY, "staff sessions");
+  const session = sessions.find(item => item.id === id);
+  if (session && !session.logoutAt) {
+    session.logoutAt = new Date().toISOString();
+    localStorage.setItem(ADMIN_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+  }
+  sessionStorage.removeItem(ADMIN_AUDIT_SESSION_KEY);
+  currentAuditSessionId = null;
+}
+
+function createInventoryAuditEntry(product, action, quantity = null, details = "") {
+  return {
+    id: `inventory-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    productId: product.id,
+    productTitle: product.title,
+    productCode: product.code,
+    action,
+    quantity,
+    details,
+    actorName: currentUser?.name || "Super admin",
+    actorUsername: currentUser?.username || "admin",
+    actorRole: currentRole,
+    recordedAt: new Date().toISOString()
+  };
+}
+
+function getProductChangeDetails(previous, next) {
+  const fields = [
+    ["Name", "title"],
+    ["Part number", "code"],
+    ["Brand", "brand"],
+    ["Price", "price"],
+    ["Stock", "stock"],
+    ["Restock alert", "reorderAt"],
+    ["Description", "desc"]
+  ];
+  const changes = fields
+    .filter(([, key]) => String(previous[key] ?? "") !== String(next[key] ?? ""))
+    .map(([label, key]) => `${label}: ${previous[key] || "(empty)"} -> ${next[key] || "(empty)"}`);
+  if (previous.image !== next.image) {
+    const imageChange = !previous.image ? "added" : !next.image ? "removed" : "replaced";
+    changes.push(`Product image ${imageChange}`);
+  }
+  return changes.join("; ");
+}
+
+function commitInventoryUpdate(nextProducts, auditEntries, nextSales = null) {
+  const previousProducts = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+  const previousSales = nextSales ? localStorage.getItem(SALES_STORAGE_KEY) : null;
+  const previousAudit = localStorage.getItem(INVENTORY_AUDIT_STORAGE_KEY);
+  let productsSaved = false;
+  let salesSaved = false;
+  let auditSaved = false;
+  try {
+    localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(nextProducts));
+    productsSaved = true;
+    if (nextSales) {
+      localStorage.setItem(SALES_STORAGE_KEY, JSON.stringify(nextSales));
+      salesSaved = true;
+    }
+    const audit = [...readAuditList(INVENTORY_AUDIT_STORAGE_KEY, "inventory activity"), ...auditEntries];
+    localStorage.setItem(INVENTORY_AUDIT_STORAGE_KEY, JSON.stringify(audit));
+    auditSaved = true;
+  } catch (error) {
+    try {
+      if (productsSaved) {
+        if (previousProducts === null) localStorage.removeItem(PRODUCTS_STORAGE_KEY);
+        else localStorage.setItem(PRODUCTS_STORAGE_KEY, previousProducts);
+      }
+      if (salesSaved) {
+        if (previousSales === null) localStorage.removeItem(SALES_STORAGE_KEY);
+        else localStorage.setItem(SALES_STORAGE_KEY, previousSales);
+      }
+      if (auditSaved) {
+        if (previousAudit === null) localStorage.removeItem(INVENTORY_AUDIT_STORAGE_KEY);
+        else localStorage.setItem(INVENTORY_AUDIT_STORAGE_KEY, previousAudit);
+      }
+    } catch (rollbackError) {
+      throw new Error(`${error.message}; saved data could not be fully restored: ${rollbackError.message}`);
+    }
+    throw error;
+  }
+  PRODUCTS = nextProducts;
+  if (nextSales) sales = nextSales;
+  window.dispatchEvent(new CustomEvent("tinex:inventory-updated"));
+}
+
+function renderActivityLog() {
+  const sessionsTable = document.getElementById("admin-sessions-table");
+  const inventoryTable = document.getElementById("inventory-audit-table");
+  if (!sessionsTable || !inventoryTable || currentRole !== "super-admin") return;
+  const sessions = readAuditList(ADMIN_SESSIONS_STORAGE_KEY, "staff sessions")
+    .sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt));
+  const activity = readAuditList(INVENTORY_AUDIT_STORAGE_KEY, "inventory activity")
+    .sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
+  sessionsTable.innerHTML = sessions.length ? sessions.map(session => `<tr>
+    <td><strong>${escapeHTML(session.name)}</strong><small>${escapeHTML(session.username)}</small></td>
+    <td>${escapeHTML(session.role === "inventory-manager" ? "Inventory staff" : session.role === "super-admin" ? "Super admin" : "Seller")}</td>
+    <td>${formatAdminDate(session.loginAt, { dateStyle: "medium", timeStyle: "short" })}</td>
+    <td>${session.logoutAt ? formatAdminDate(session.logoutAt, { dateStyle: "medium", timeStyle: "short" }) : "Still signed in"}</td>
+  </tr>`).join("") : `<tr><td colspan="4" class="admin-empty">No sign-in sessions recorded yet.</td></tr>`;
+  inventoryTable.innerHTML = activity.length ? activity.map(entry => `<tr>
+    <td><strong>${escapeHTML(entry.productTitle)}</strong><small>${escapeHTML(entry.productCode || "")}</small></td>
+    <td>${escapeHTML(entry.action)}${entry.quantity === null ? "" : ` (${entry.quantity} unit${entry.quantity === 1 ? "" : "s"})`}${entry.details ? `<small>${escapeHTML(entry.details)}</small>` : ""}</td>
+    <td><strong>${escapeHTML(entry.actorName)}</strong><small>${escapeHTML(entry.actorRole === "inventory-manager" ? "Inventory staff" : entry.actorRole === "super-admin" ? "Super admin" : "Seller")}</small></td>
+    <td>${formatAdminDate(entry.recordedAt, { dateStyle: "medium", timeStyle: "short" })}</td>
+  </tr>`).join("") : `<tr><td colspan="4" class="admin-empty">No inventory changes recorded yet.</td></tr>`;
+}
+
 function renderSellerUsers() {
   const table = document.getElementById("seller-users-table");
   if (!table) return;
   table.innerHTML = sellerUsers.length ? sellerUsers.map(user => `<tr>
     <td><strong>${escapeHTML(user.name)}</strong></td>
     <td>${escapeHTML(user.username)}</td>
+    <td>${getUserRole(user) === "inventory-manager" ? "Inventory staff" : "Seller"}</td>
     <td><span class="stock-status ${user.active ? "available" : "out"}">${user.active ? "Active" : "Access revoked"}</span></td>
     <td>${formatAdminDate(user.createdAt || new Date().toISOString())}</td>
     <td><button class="admin-edit-button" type="button" data-toggle-seller="${escapeHTML(user.id)}" data-active="${user.active ? "true" : "false"}">${user.active ? "Revoke access" : "Restore access"}</button></td>
-  </tr>`).join("") : `<tr><td colspan="5" class="admin-empty">No seller accounts yet.</td></tr>`;
+  </tr>`).join("") : `<tr><td colspan="6" class="admin-empty">No staff accounts yet.</td></tr>`;
 }
 
 function getSaleTypeLabel(sale) {
@@ -76,7 +251,8 @@ function addSellerUser(event) {
   const username = form.elements.username.value.trim();
   const password = form.elements.password.value;
   const confirmPassword = form.elements.confirmPassword.value;
-  if (!name || !/^[a-zA-Z0-9._-]{3,30}$/.test(username) || password.length < 8) {
+  const role = form.elements.role.value;
+  if (!name || !/^[a-zA-Z0-9._-]{3,30}$/.test(username) || password.length < 8 || !["seller", "inventory-manager"].includes(role)) {
     showAdminMessage("Enter a name, a 3–30 character username, and a password of at least 8 characters.", "error");
     return;
   }
@@ -94,6 +270,7 @@ function addSellerUser(event) {
     name,
     username,
     password,
+    role,
     active: true,
     createdAt: new Date().toISOString()
   };
@@ -104,7 +281,7 @@ function addSellerUser(event) {
     return;
   }
   form.reset();
-  showAdminMessage(`Seller ${name} authorized. Share the username and password privately.`);
+  showAdminMessage(`${user.role === "inventory-manager" ? "Inventory staff" : "Seller"} ${name} authorized. Share the username and password privately.`);
 }
 
 function toggleSellerAccess(userId) {
@@ -201,7 +378,7 @@ function renderDashboard() {
 function renderInventory() {
   const query = document.getElementById("inventory-search").value.trim().toLowerCase();
   const statusFilter = document.getElementById("inventory-status").value;
-  const canEdit = currentRole === "super-admin";
+  const canEdit = isInventoryEditor();
   const filtered = PRODUCTS.filter(product => {
     const matchesText = [product.title, product.code, product.brand].some(value => String(value).toLowerCase().includes(query));
     const matchesStatus = statusFilter === "all" ||
@@ -249,6 +426,7 @@ function renderInventory() {
   restockProduct.disabled = !canEdit || PRODUCTS.length === 0;
   if (currentRole === "seller" && !document.querySelector("#order-items .admin-order-item")) addOrderItem();
   if (currentRole === "super-admin") renderDashboard();
+  if (currentRole === "super-admin") renderActivityLog();
 }
 
 function addOrderItem(productId = "", quantity = 1) {
@@ -304,7 +482,7 @@ function renderAdmin() {
 }
 
 function showProductForm(product = null) {
-  if (currentRole !== "super-admin") return;
+  if (!isInventoryEditor()) return;
   const card = document.getElementById("product-form-card");
   const form = document.getElementById("product-form");
   form.reset();
@@ -339,8 +517,8 @@ function closeProductForm() {
 
 function saveProduct(event) {
   event.preventDefault();
-  if (currentRole !== "super-admin") {
-    showAdminMessage("Only a Super admin can change inventory.", "error");
+  if (!isInventoryEditor() || (currentRole === "inventory-manager" && !isAuthorizedStaff())) {
+    showAdminMessage("Only authorized inventory staff can change product details.", "error");
     return;
   }
   const form = event.currentTarget;
@@ -370,8 +548,21 @@ function saveProduct(event) {
   const nextProducts = productId
     ? PRODUCTS.map(existing => existing.id === productId ? product : existing)
     : [...PRODUCTS, product];
+  const previousProduct = PRODUCTS.find(existing => existing.id === productId);
+  const stockDifference = product.stock - (previousProduct?.stock || 0);
+  const changeDetails = previousProduct
+    ? getProductChangeDetails(previousProduct, product)
+    : `Initial stock: ${product.stock}`;
+  const auditEntry = createInventoryAuditEntry(
+    product,
+    previousProduct
+      ? stockDifference > 0 ? "Product updated; stock added" : stockDifference < 0 ? "Product updated; stock deducted" : "Product details updated"
+      : "Product added",
+    previousProduct ? Math.abs(stockDifference) : product.stock,
+    changeDetails || "Product saved without changes"
+  );
   try {
-    persistProducts(nextProducts);
+    commitInventoryUpdate(nextProducts, [auditEntry]);
     closeProductForm();
     showAdminMessage(productId ? "Product updated." : "Product added.");
   } catch (error) {
@@ -381,28 +572,37 @@ function saveProduct(event) {
 
 function addStock(event) {
   event.preventDefault();
-  if (currentRole !== "super-admin") {
-    showAdminMessage("Only a Super admin can add stock.", "error");
+  if (!isInventoryEditor() || (currentRole === "inventory-manager" && !isAuthorizedStaff())) {
+    showAdminMessage("Only authorized inventory staff can adjust stock.", "error");
     return;
   }
   const form = event.currentTarget;
   const product = PRODUCTS.find(item => item.id === form.elements.productId.value);
   const quantity = Number(form.elements.quantity.value);
-  if (!product || !Number.isInteger(quantity) || quantity <= 0) {
+  const action = form.elements.action.value;
+  if (!product || !Number.isInteger(quantity) || quantity <= 0 || !["add", "deduct"].includes(action)) {
     showAdminMessage("Choose a product and enter a positive whole-number quantity.", "error");
     return;
   }
+  if (action === "deduct" && quantity > product.stock) {
+    showAdminMessage(`Only ${product.stock} ${product.stock === 1 ? "unit is" : "units are"} in stock for ${product.title}.`, "error");
+    return;
+  }
+  const adjustment = action === "deduct" ? -quantity : quantity;
   const nextProducts = PRODUCTS.map(item => item.id === product.id
-    ? { ...item, stock: Number(item.stock) + quantity }
+    ? { ...item, stock: Number(item.stock) + adjustment }
     : item);
   try {
-    persistProducts(nextProducts);
+    commitInventoryUpdate(nextProducts, [
+      createInventoryAuditEntry(product, action === "deduct" ? "Stock deducted" : "Stock added", quantity)
+    ]);
   } catch (error) {
-    showAdminMessage(`Could not add stock: ${error.message}`, "error");
+    showAdminMessage(`Could not adjust stock: ${error.message}`, "error");
     return;
   }
   form.elements.quantity.value = 1;
-  showAdminMessage(`Added ${quantity} ${quantity === 1 ? "unit" : "units"} of ${product.title} to inventory.`);
+  form.elements.action.value = "add";
+  showAdminMessage(`${action === "deduct" ? "Deducted" : "Added"} ${quantity} ${quantity === 1 ? "unit" : "units"} ${action === "deduct" ? "from" : "to"} ${product.title} inventory.`);
 }
 
 function confirmOrder(event) {
@@ -411,27 +611,18 @@ function confirmOrder(event) {
     showAdminMessage("Only a Seller can confirm WhatsApp orders.", "error");
     return;
   }
+  if (!isAuthorizedStaff()) return;
   const authorizedUser = readSellerUsers().find(user =>
-    user.active && user.username.toLowerCase() === currentUser?.username.toLowerCase()
+    user.active && user.username.toLowerCase() === currentUser?.username.toLowerCase() && getUserRole(user) === "seller"
   );
-  if (!authorizedUser) {
-    showAdminMessage("Your Seller access has been revoked. Sign in with an active account.", "error");
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
-    currentRole = null;
-    currentUser = null;
-    document.getElementById("admin-dashboard").hidden = true;
-    document.getElementById("admin-login").hidden = false;
-    return;
-  }
   const form = event.currentTarget;
-  const soldAt = new Date(form.elements.soldAt.value);
+  const recordedAt = new Date().toISOString();
   const requestedItems = [...form.querySelectorAll(".admin-order-item")].map(row => ({
     productId: row.querySelector('[name="productId"]').value,
     quantity: Number(row.querySelector('[name="quantity"]').value)
   }));
-  if (!requestedItems.length || !Number.isFinite(soldAt.getTime())) {
-    showAdminMessage("Add at least one product and choose a valid order date.", "error");
+  if (!requestedItems.length) {
+    showAdminMessage("Add at least one product to the WhatsApp order.", "error");
     return;
   }
   if (requestedItems.some(item => !item.productId || !Number.isInteger(item.quantity) || item.quantity <= 0)) {
@@ -463,8 +654,8 @@ function confirmOrder(event) {
     code: product.code,
     quantity,
     unitPrice: Number(product.price),
-    soldAt: soldAt.toISOString(),
-    recordedAt: new Date().toISOString(),
+    soldAt: recordedAt,
+    recordedAt,
     stockDeducted: true,
     recordedBy: authorizedUser.username,
     sellerName: authorizedUser.name,
@@ -474,40 +665,17 @@ function confirmOrder(event) {
   const nextProducts = PRODUCTS.map(product => quantities.has(product.id)
     ? { ...product, stock: product.stock - quantities.get(product.id) }
     : product);
-  let previousProducts;
-  let previousSales;
-  let productsSaved = false;
-  let salesSaved = false;
+  const auditEntries = orderProducts.map(({ product, quantity }) =>
+    createInventoryAuditEntry(product, "WhatsApp order stock deducted", quantity, `Order ${orderId}`)
+  );
   try {
-    previousProducts = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-    previousSales = localStorage.getItem(SALES_STORAGE_KEY);
-    localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(nextProducts));
-    productsSaved = true;
-    localStorage.setItem(SALES_STORAGE_KEY, JSON.stringify(nextSales));
-    salesSaved = true;
+    commitInventoryUpdate(nextProducts, auditEntries, nextSales);
   } catch (error) {
-    try {
-      if (productsSaved) {
-        if (previousProducts === null) localStorage.removeItem(PRODUCTS_STORAGE_KEY);
-        else localStorage.setItem(PRODUCTS_STORAGE_KEY, previousProducts);
-      }
-      if (salesSaved) {
-        if (previousSales === null) localStorage.removeItem(SALES_STORAGE_KEY);
-        else localStorage.setItem(SALES_STORAGE_KEY, previousSales);
-      }
-    } catch (rollbackError) {
-      showAdminMessage(`Could not save the order, and saved data could not be fully restored: ${rollbackError.message}`, "error");
-      return;
-    }
     showAdminMessage(`Could not confirm order: ${error.message}`, "error");
     return;
   }
-  PRODUCTS = nextProducts;
-  sales = nextSales;
-  window.dispatchEvent(new CustomEvent("tinex:inventory-updated"));
   document.getElementById("order-items").replaceChildren();
   addOrderItem();
-  form.elements.soldAt.value = getNowForDateInput();
   showAdminMessage(`WhatsApp order confirmed by ${authorizedUser.name}; stock updated.`);
 }
 
@@ -517,31 +685,22 @@ function recordSellerSale(event) {
     showAdminMessage("Only a Seller can submit a daily sales report this way.", "error");
     return;
   }
+  if (!isAuthorizedStaff()) return;
   const form = event.currentTarget;
   const authorizedUser = readSellerUsers().find(user =>
-    user.active && user.username.toLowerCase() === currentUser?.username.toLowerCase()
+    user.active && user.username.toLowerCase() === currentUser?.username.toLowerCase() && getUserRole(user) === "seller"
   );
-  if (!authorizedUser) {
-    showAdminMessage("Your Seller access has been revoked. Sign in with an active account.", "error");
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
-    currentRole = null;
-    currentUser = null;
-    document.getElementById("admin-dashboard").hidden = true;
-    document.getElementById("admin-login").hidden = false;
-    return;
-  }
   const product = PRODUCTS.find(item => item.id === form.elements.productId.value);
   const quantity = Number(form.elements.quantity.value);
-  const soldAt = new Date(form.elements.soldAt.value);
-  if (!product || !Number.isInteger(quantity) || quantity <= 0 || !Number.isFinite(soldAt.getTime())) {
-    showAdminMessage("Choose a product, enter a whole-number quantity and select a valid date.", "error");
+  if (!product || !Number.isInteger(quantity) || quantity <= 0) {
+    showAdminMessage("Choose a product and enter a whole-number quantity.", "error");
     return;
   }
   if (quantity > product.stock) {
     showAdminMessage(`Only ${product.stock} ${product.stock === 1 ? "unit is" : "units are"} in stock for ${product.title}.`, "error");
     return;
   }
+  const recordedAt = new Date().toISOString();
   const sale = {
     id: `report-${Date.now()}`,
     productId: product.id,
@@ -549,10 +708,10 @@ function recordSellerSale(event) {
     code: product.code,
     quantity,
     unitPrice: Number(product.price),
-    soldAt: soldAt.toISOString(),
-    recordedAt: new Date().toISOString(),
+    soldAt: recordedAt,
+    recordedAt,
     stockDeducted: true,
-    stockDeductedAt: new Date().toISOString(),
+    stockDeductedAt: recordedAt,
     recordedBy: authorizedUser.username,
     sellerName: authorizedUser.name
   };
@@ -560,28 +719,15 @@ function recordSellerSale(event) {
   const nextProducts = PRODUCTS.map(item => item.id === product.id
     ? { ...item, stock: item.stock - quantity }
     : item);
-  let previousProducts;
+  const auditEntry = createInventoryAuditEntry(product, "Seller sale stock deducted", quantity);
   try {
-    previousProducts = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-    localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(nextProducts));
-    localStorage.setItem(SALES_STORAGE_KEY, JSON.stringify(nextSales));
+    commitInventoryUpdate(nextProducts, [auditEntry], nextSales);
   } catch (error) {
-    try {
-      if (previousProducts === null) localStorage.removeItem(PRODUCTS_STORAGE_KEY);
-      else if (previousProducts !== undefined) localStorage.setItem(PRODUCTS_STORAGE_KEY, previousProducts);
-    } catch (rollbackError) {
-      showAdminMessage(`Could not save the sale, and saved inventory could not be fully restored: ${rollbackError.message}`, "error");
-      return;
-    }
     showAdminMessage(`Could not save daily sales report: ${error.message}`, "error");
     return;
   }
-  PRODUCTS = nextProducts;
-  sales = nextSales;
-  window.dispatchEvent(new CustomEvent("tinex:inventory-updated"));
   renderSales();
   form.elements.quantity.value = 1;
-  form.elements.soldAt.value = getNowForDateInput();
   showAdminMessage(`Sale recorded. ${quantity} ${quantity === 1 ? "unit was" : "units were"} deducted from ${product.title} inventory.`);
 }
 
@@ -610,37 +756,15 @@ function deductReportedSale(saleId) {
   const nextSales = sales.map(item => item.id === sale.id
     ? { ...item, stockDeducted: true, stockDeductedAt: new Date().toISOString() }
     : item);
-  let previousProducts;
-  let productsSaved = false;
+  const auditEntry = createInventoryAuditEntry(product, "Reported sale stock deducted", Number(sale.quantity));
   try {
-    previousProducts = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-    localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(nextProducts));
-    productsSaved = true;
-    localStorage.setItem(SALES_STORAGE_KEY, JSON.stringify(nextSales));
+    commitInventoryUpdate(nextProducts, [auditEntry], nextSales);
   } catch (error) {
-    try {
-      if (productsSaved) {
-        if (previousProducts === null) localStorage.removeItem(PRODUCTS_STORAGE_KEY);
-        else localStorage.setItem(PRODUCTS_STORAGE_KEY, previousProducts);
-      }
-    } catch (rollbackError) {
-      showAdminMessage(`Could not save the stock deduction, and saved inventory could not be fully restored: ${rollbackError.message}`, "error");
-      return;
-    }
     showAdminMessage(`Could not deduct stock: ${error.message}`, "error");
     return;
   }
-  PRODUCTS = nextProducts;
-  sales = nextSales;
-  window.dispatchEvent(new CustomEvent("tinex:inventory-updated"));
   renderSales();
   showAdminMessage(`Deducted ${sale.quantity} ${sale.quantity === 1 ? "unit" : "units"} of ${product.title} from stock.`);
-}
-
-function getNowForDateInput() {
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  return now.toISOString().slice(0, 16);
 }
 
 function loadImage(event) {
@@ -670,7 +794,8 @@ function loadImage(event) {
 }
 
 function setAdminPanel(name) {
-  if (currentRole !== "super-admin" && ["overview", "users"].includes(name)) return;
+  if (currentRole !== "super-admin" && ["overview", "users", "activity"].includes(name)) return;
+  if (currentRole === "inventory-manager" && name !== "inventory") return;
   document.querySelectorAll(".admin-tab").forEach(button => button.classList.toggle("active", button.dataset.panel === name));
   document.querySelectorAll(".admin-panel").forEach(panel => panel.classList.toggle("active", panel.id === `panel-${name}`));
 }
@@ -678,26 +803,35 @@ function setAdminPanel(name) {
 function setRoleAccess(role) {
   currentRole = role;
   const isSuperAdmin = role === "super-admin";
+  const isInventoryManager = role === "inventory-manager";
+  const canEditInventory = isSuperAdmin || isInventoryManager;
   document.querySelectorAll("[data-super-admin-only]").forEach(element => {
     element.hidden = !isSuperAdmin;
   });
   document.querySelectorAll("[data-seller-only]").forEach(element => {
     element.hidden = role !== "seller";
   });
-  document.getElementById("seller-sale-entry").hidden = isSuperAdmin;
-  document.getElementById("inventory-actions-heading").hidden = !isSuperAdmin;
-  document.getElementById("admin-role-badge").textContent = isSuperAdmin ? "Super admin" : "Seller";
-  document.getElementById("dashboard-title").textContent = isSuperAdmin ? "Inventory dashboard" : "Seller dashboard";
+  document.querySelectorAll("[data-inventory-access]").forEach(element => {
+    element.hidden = !canEditInventory;
+  });
+  document.getElementById("seller-sale-entry").hidden = role !== "seller";
+  document.getElementById("inventory-actions-heading").hidden = !canEditInventory;
+  document.getElementById("sales-tab").hidden = isInventoryManager;
+  document.getElementById("panel-sales").hidden = isInventoryManager;
+  document.getElementById("admin-role-badge").textContent = isSuperAdmin ? "Super admin" : isInventoryManager ? "Inventory staff" : "Seller";
+  document.getElementById("dashboard-title").textContent = isSuperAdmin ? "Inventory dashboard" : isInventoryManager ? "Inventory staff dashboard" : "Seller dashboard";
   document.getElementById("dashboard-caption").textContent = isSuperAdmin
     ? "Manage parts, check restock needs, and review sales."
-    : `Signed in as ${currentUser?.name || "Seller"}. View inventory and record sales.`;
-  document.getElementById("inventory-intro").textContent = isSuperAdmin
+    : isInventoryManager
+      ? `Signed in as ${currentUser?.name || "Inventory staff"}. Update products and stock.`
+      : `Signed in as ${currentUser?.name || "Seller"}. View inventory and record sales.`;
+  document.getElementById("inventory-intro").textContent = canEditInventory
     ? "Add new parts or update their details, price, photo and quantity."
     : "Read-only inventory view. Contact a Super admin to change products or stock.";
   document.getElementById("sales-intro").textContent = isSuperAdmin
-    ? "Review Seller-recorded sales and manage inventory. Sellers confirm WhatsApp orders and deduct stock."
-    : "Record item sales or confirm completed WhatsApp orders. Both actions immediately reduce inventory and appear in the sales report.";
-  setAdminPanel(isSuperAdmin ? "overview" : "sales");
+    ? "Review sales and inventory changes. Sellers confirm WhatsApp orders and deduct stock."
+    : "Record item sales or confirm completed WhatsApp orders. Sale time is recorded automatically.";
+  setAdminPanel(isSuperAdmin ? "overview" : isInventoryManager ? "inventory" : "sales");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -719,6 +853,7 @@ document.addEventListener("DOMContentLoaded", () => {
       renderAdmin();
     } else {
       currentRole = null;
+      currentUser = null;
       passwordInput.value = "";
       passwordInput.focus();
     }
@@ -735,7 +870,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     const role = authenticatedUser?.role;
-    if (role !== expectedRole) {
+    const roleAllowed = expectedRole === "super-admin"
+      ? role === "super-admin"
+      : ["seller", "inventory-manager"].includes(role);
+    if (!roleAllowed) {
       loginError.textContent = "That password is not correct. Try again.";
       passwordInput.focus();
       passwordInput.select();
@@ -743,12 +881,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     currentRole = role;
     currentUser = authenticatedUser;
-    sessionStorage.setItem(ADMIN_SESSION_KEY, role);
-    sessionStorage.setItem(ADMIN_USER_SESSION_KEY, JSON.stringify(currentUser));
+    try {
+      recordStaffSession(currentUser);
+      sessionStorage.setItem(ADMIN_SESSION_KEY, role);
+      sessionStorage.setItem(ADMIN_USER_SESSION_KEY, JSON.stringify(currentUser));
+    } catch (error) {
+      let failureMessage = `Could not record this sign-in: ${error.message}`;
+      try {
+        endCurrentAuditSession();
+      } catch (sessionError) {
+        failureMessage = `Could not finish sign-in tracking: ${sessionError.message}`;
+      }
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+      currentRole = null;
+      currentUser = null;
+      loginError.textContent = failureMessage;
+      return;
+    }
     loginError.textContent = "";
     showDashboard(true);
   });
   lockButton.addEventListener("click", () => {
+    try {
+      endCurrentAuditSession();
+    } catch (error) {
+      showAdminMessage(`Could not record sign-out: ${error.message}`, "error");
+      return;
+    }
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
     currentRole = null;
@@ -769,33 +929,72 @@ document.addEventListener("DOMContentLoaded", () => {
     bindPasswordToggle(toggle, document.getElementById(toggle.getAttribute("aria-controls")));
   });
   const savedRole = sessionStorage.getItem(ADMIN_SESSION_KEY);
-  currentRole = savedRole === expectedRole ? savedRole : null;
+  const savedRoleAllowed = expectedRole === "super-admin"
+    ? savedRole === "super-admin"
+    : ["seller", "inventory-manager"].includes(savedRole);
+  currentRole = savedRoleAllowed ? savedRole : null;
   if (currentRole) {
     currentUser = JSON.parse(sessionStorage.getItem(ADMIN_USER_SESSION_KEY) || "null");
-    if (currentRole === "seller" && (!currentUser || !sellerUsers.some(user => user.active && user.username === currentUser.username))) {
+    if (currentRole !== "super-admin" && (!currentUser || !sellerUsers.some(user =>
+      user.active && user.username.toLowerCase() === currentUser.username.toLowerCase() && getUserRole(user) === currentRole
+    ))) {
       currentRole = null;
       currentUser = null;
     }
   }
   if (!currentRole) {
+    try {
+      endCurrentAuditSession();
+    } catch (error) {
+      loginError.textContent = `Could not record sign-out: ${error.message}`;
+    }
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_AUDIT_SESSION_KEY);
+  } else {
+    currentAuditSessionId = sessionStorage.getItem(ADMIN_AUDIT_SESSION_KEY);
+    try {
+      const sessions = readAuditList(ADMIN_SESSIONS_STORAGE_KEY, "staff sessions");
+      const activeSession = sessions.find(session => session.id === currentAuditSessionId && !session.logoutAt);
+      if (!activeSession) {
+        recordStaffSession(currentUser);
+      }
+    } catch (error) {
+      currentRole = null;
+      currentUser = null;
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+      sessionStorage.removeItem(ADMIN_AUDIT_SESSION_KEY);
+      loginError.textContent = `Could not restore sign-in tracking: ${error.message}`;
+    }
   }
   showDashboard(currentRole !== null);
   window.addEventListener("storage", event => {
-    if (event.key !== SELLER_USERS_STORAGE_KEY || currentRole !== "seller") return;
-    sellerUsers = readSellerUsers();
-    const stillAuthorized = sellerUsers.some(user =>
-      user.active && user.username.toLowerCase() === currentUser?.username.toLowerCase()
-    );
-    if (stillAuthorized) return;
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
-    currentRole = null;
-    currentUser = null;
-    dashboard.hidden = true;
-    login.hidden = false;
-    loginError.textContent = "Your Seller access was revoked. Contact the Super admin.";
+    try {
+      if (event.key === SELLER_USERS_STORAGE_KEY && ["seller", "inventory-manager"].includes(currentRole)) {
+        sellerUsers = readSellerUsers();
+        const stillAuthorized = sellerUsers.some(user =>
+          user.active &&
+          user.username.toLowerCase() === currentUser?.username.toLowerCase() &&
+          getUserRole(user) === currentRole
+        );
+        if (stillAuthorized) return;
+        endCurrentAuditSession();
+        sessionStorage.removeItem(ADMIN_SESSION_KEY);
+        sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+        currentRole = null;
+        currentUser = null;
+        dashboard.hidden = true;
+        login.hidden = false;
+        loginError.textContent = "Your access was revoked. Contact the Super admin.";
+        return;
+      }
+      if ([ADMIN_SESSIONS_STORAGE_KEY, INVENTORY_AUDIT_STORAGE_KEY].includes(event.key) && currentRole === "super-admin") {
+        renderActivityLog();
+      }
+    } catch (error) {
+      showAdminMessage(`Could not refresh account activity: ${error.message}`, "error");
+    }
   });
 
   document.querySelectorAll(".admin-tab").forEach(button => button.addEventListener("click", () => setAdminPanel(button.dataset.panel)));
@@ -825,7 +1024,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("inventory-search").addEventListener("input", renderInventory);
   document.getElementById("inventory-status").addEventListener("change", renderInventory);
   document.getElementById("inventory-table").addEventListener("click", event => {
-    if (currentRole !== "super-admin") return;
+    if (!isInventoryEditor() || (currentRole === "inventory-manager" && !isAuthorizedStaff())) return;
     const button = event.target.closest("[data-edit-product]");
     if (!button) return;
     const product = PRODUCTS.find(item => item.id === button.dataset.editProduct);
@@ -842,8 +1041,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-period]").forEach(item => item.classList.toggle("active", item === button));
     renderSales();
   }));
-  document.getElementById("sale-date").value = getNowForDateInput();
-  document.getElementById("seller-sale-date").value = getNowForDateInput();
 });
 
 window.addEventListener("tinex:inventory-updated", () => {
