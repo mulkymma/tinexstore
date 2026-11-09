@@ -10,13 +10,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
-<body class="admin-page">
+<body class="admin-page" data-admin-role="seller">
   <header class="admin-header">
     <a href="index.html" class="logo">
       <div class="logo-icon">T</div>
       <div>
         <div>TINEX</div>
-        <div class="admin-logo-caption">INVENTORY ADMIN</div>
+        <div class="admin-logo-caption">SELLER PORTAL</div>
       </div>
     </a>
     <a class="admin-store-link" href="catalog.html">View storefront ↗</a>
@@ -26,16 +26,23 @@
   <main class="admin-login" id="admin-login">
     <section class="admin-card admin-login-card">
       <div class="admin-login-icon">T</div>
-      <p class="admin-eyebrow">TINEX ADMIN</p>
-      <h1>Sign in</h1>
-      <p class="text-muted">Enter your Super admin or Seller password.</p>
+      <p class="admin-eyebrow">TINEX SELLER</p>
+      <h1>Seller sign in</h1>
+      <p class="text-muted">Sign in to record sales and view current inventory.</p>
       <form id="admin-login-form" class="admin-login-form">
+        <label for="admin-username">Username</label>
+        <input id="admin-username" name="username" type="text" autocomplete="username" required />
         <label for="admin-password">Password</label>
-        <input id="admin-password" name="password" type="password" autocomplete="current-password" required />
+        <div class="admin-password-field">
+          <input id="admin-password" name="password" type="password" autocomplete="current-password" required />
+          <button class="admin-password-toggle" type="button" aria-label="Show password" aria-pressed="false" aria-controls="admin-password">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="admin-eye-slash" d="m4 4 16 16"/></svg>
+          </button>
+        </div>
         <p id="admin-login-error" class="admin-login-error" role="alert"></p>
         <button class="btn btn-primary" type="submit">Sign in</button>
       </form>
-      <p class="admin-demo-notice">Demo passwords: Super admin <strong>tinex-demo</strong> · Seller <strong>seller-demo</strong>. Seller access is read-only for inventory and does not deduct stock when recording sales.</p>
+      <p class="admin-demo-notice">Demo seller login: username <strong>seller</strong>, password <strong>seller-demo</strong>. For a personal login, ask the Super admin to authorize your account.</p>
       <a class="admin-login-back" href="index.html">← Back to storefront</a>
     </section>
   </main>
@@ -55,6 +62,7 @@
       <button class="admin-tab active" data-panel="overview" data-super-admin-only type="button">Overview</button>
       <button class="admin-tab" data-panel="inventory" type="button">Inventory</button>
       <button class="admin-tab" data-panel="sales" type="button">Sales</button>
+      <button class="admin-tab" data-panel="users" data-super-admin-only type="button">Seller access</button>
     </nav>
     <div id="admin-message" class="admin-message" role="status" aria-live="polite"></div>
 
@@ -86,7 +94,7 @@
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Product</th><th>Qty</th><th>Total</th><th>Date</th></tr></thead>
+              <thead><tr><th>Product</th><th>Qty</th><th>Total</th><th>Sold by / logged at</th></tr></thead>
               <tbody id="recent-sales-table"></tbody>
             </table>
           </div>
@@ -155,10 +163,10 @@
 
     <section class="admin-panel" id="panel-sales">
       <div class="admin-section-heading">
-        <div><h2>Sales reports</h2><p id="sales-intro">Seller sales automatically reduce stock. A Super admin can add stock or confirm WhatsApp orders not already reported.</p></div>
+        <div><h2>Sales reports</h2><p id="sales-intro">Seller sales and confirmed WhatsApp orders automatically reduce stock.</p></div>
       </div>
-      <section class="admin-card admin-sale-entry" id="order-entry-card" data-super-admin-only>
-        <div class="admin-card-heading"><div><h2>Confirm WhatsApp order</h2><p>Use this only for orders not already recorded by a Seller. Seller-recorded sales already deduct their quantities from stock.</p></div></div>
+      <section class="admin-card admin-sale-entry" id="order-entry-card" data-seller-only>
+        <div class="admin-card-heading"><div><h2>Confirm WhatsApp order</h2><p>Use this for completed WhatsApp orders that have not already been recorded. Confirming an order deducts the items from stock.</p></div></div>
         <form id="sale-form" class="admin-form admin-sale-form">
           <label class="admin-order-date">Order date &amp; time<input name="soldAt" id="sale-date" type="datetime-local" required /></label>
           <div class="admin-order-items admin-form-wide" id="order-items"></div>
@@ -184,17 +192,57 @@
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Product</th><th>Quantity</th><th>Unit price</th><th>Total</th><th>Stock</th><th>Date</th></tr></thead>
+            <thead><tr><th>Product</th><th>Quantity</th><th>Unit price</th><th>Total</th><th>Stock</th><th>Sold by / logged at</th></tr></thead>
             <tbody id="sales-table"></tbody>
           </table>
         </div>
       </section>
     </section>
 
-    <p class="admin-disclaimer">Demo only: roles, passwords, inventory and sales are stored/checked in this browser. A user can bypass these client-side permissions. Use server-side authentication and a database before publishing for business use.</p>
+    <section class="admin-panel" id="panel-users" data-super-admin-only>
+      <div class="admin-section-heading">
+        <div><h2>Seller access</h2><p>Create named seller logins and revoke access when needed.</p></div>
+      </div>
+      <section class="admin-card admin-user-form-card">
+        <div class="admin-card-heading"><div><h2>Authorize a seller</h2><p>Each account identifies the seller on their recorded sales.</p></div></div>
+        <form id="seller-user-form" class="admin-form admin-user-form">
+          <label>Seller name<input name="name" required maxlength="80" autocomplete="name" /></label>
+          <label>Username<input name="username" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+" autocomplete="off" /></label>
+          <label>Password
+            <div class="admin-password-field">
+              <input id="seller-password" name="password" type="password" required minlength="8" autocomplete="new-password" />
+              <button class="admin-password-toggle" type="button" aria-label="Show password" aria-pressed="false" aria-controls="seller-password">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="admin-eye-slash" d="m4 4 16 16"/></svg>
+              </button>
+            </div>
+          </label>
+          <label>Confirm password
+            <div class="admin-password-field">
+              <input id="seller-password-confirm" name="confirmPassword" type="password" required minlength="8" autocomplete="new-password" />
+              <button class="admin-password-toggle" type="button" aria-label="Show password" aria-pressed="false" aria-controls="seller-password-confirm">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="admin-eye-slash" d="m4 4 16 16"/></svg>
+              </button>
+            </div>
+          </label>
+          <div class="admin-form-actions admin-form-wide"><button class="btn btn-primary" type="submit">Add seller access</button></div>
+        </form>
+      </section>
+      <section class="admin-card">
+        <div class="admin-card-heading"><div><h2>Authorized sellers</h2><p>Seller passwords are not shown here.</p></div></div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Name</th><th>Username</th><th>Access</th><th>Added</th><th></th></tr></thead>
+            <tbody id="seller-users-table"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <p class="admin-disclaimer">Demo only: seller accounts, passwords, inventory and sales are stored in this browser. A user can bypass these client-side permissions. Use server-side authentication and a database before publishing for business use.</p>
   </main>
 
   <script src="js/store.js"></script>
   <script src="js/admin.js"></script>
+  <script src="js/seller-auth.js"></script>
 </body>
 </html>

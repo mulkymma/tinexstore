@@ -1081,6 +1081,58 @@ img {
   font: inherit;
 }
 
+.admin-password-field {
+  position: relative;
+}
+
+.admin-login-form .admin-password-field input {
+  padding-right: 3rem;
+}
+
+.admin-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.admin-password-toggle:hover {
+  background: #f1f5f9;
+  color: var(--secondary);
+}
+
+.admin-password-toggle:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.admin-password-toggle svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.admin-password-toggle .admin-eye-slash {
+  display: none;
+}
+
+.admin-password-toggle:not(.is-visible) .admin-eye-slash {
+  display: block;
+}
+
 .admin-login-form .btn {
   justify-content: center;
   margin-top: 0.25rem;
@@ -1339,6 +1391,22 @@ img {
   margin-top: 0.12rem;
 }
 
+.admin-sale-type {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  color: #475569;
+  background: #f1f5f9;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.admin-sale-type.whatsapp {
+  color: #047857;
+  background: #d1fae5;
+}
+
 .admin-empty {
   color: var(--text-muted);
   text-align: center;
@@ -1517,6 +1585,27 @@ img {
   margin-top: 1rem;
 }
 
+.admin-user-form-card {
+  margin-bottom: 1rem;
+}
+
+.admin-user-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.admin-user-form .admin-password-field input {
+  padding-right: 3rem;
+}
+
+.admin-user-form .admin-form-actions {
+  align-self: end;
+}
+
+.admin-user-form .admin-form-actions .btn {
+  min-height: 42px;
+}
+
 .admin-restock-card {
   margin-bottom: 1rem;
   border-left: 4px solid var(--accent);
@@ -1677,6 +1766,14 @@ img {
     grid-column: 1 / -1;
   }
 
+  .admin-user-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-user-form .admin-form-actions {
+    grid-column: 1 / -1;
+  }
+
 }
 
 @media (max-width: 600px) {
@@ -1717,6 +1814,7 @@ img {
   .admin-form,
   .admin-sale-form,
   .admin-restock-form,
+  .admin-user-form,
   .admin-order-item {
     grid-template-columns: 1fr;
   }

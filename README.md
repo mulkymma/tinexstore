@@ -22,7 +22,7 @@ A clean, professional static website redesign of the TINEX Auto Components Shopi
 - Search by title or part number
 - Cart with localStorage persistence
 - Inventory admin at `admin.html` for stock, prices, product images and restock alerts
-- Separate Super admin and Seller demo roles
+- Separate Seller portal (`admin.html`) and Super admin portal (`super-admin.html`)
 - Sellers can view inventory and record one product's daily sold quantity; each sale automatically deducts that quantity from stock
 - Only Super admins can add stock, edit products, or confirm WhatsApp orders directly
 - Day, week and month sales summaries with clear deducted/pending stock status
@@ -42,9 +42,9 @@ python3 -m http.server 8080
 # then visit http://localhost:8080 or http://localhost:8080/admin.html
 ```
 
-Inventory and sales data are stored in the browser's localStorage and shared between pages opened from the same site origin. Sign in to `admin.html` with the Super admin demo password `tinex-demo` or Seller demo password `seller-demo`. Sellers can view inventory and record one product and quantity at a time; saving the sale immediately reduces inventory and adds a sold/deducted entry to the sales report. The Super admin can add stock using the Add stock form, edit products, and confirm WhatsApp orders that have not already been recorded by a Seller. Do not record the same sale twice. Regular `wa.me` links cannot notify the site when a message is sent or confirmed. This static demo has no server-side database or cross-device synchronization, and its client-side roles/passwords can be bypassed; do not expose it as a production admin system without adding server-side authentication and storage.
+Inventory, seller accounts, and sales data are stored in the browser's localStorage and shared between pages opened from the same site origin. Sellers use `admin.html`; Super admins use `super-admin.html`. The Super admin can create named seller accounts, revoke or restore their access, add stock, edit products, and review sales. Sellers sign in with their assigned username and password, can view inventory, record item sales, and confirm completed WhatsApp orders. Each recorded sale or confirmed order reduces inventory immediately and adds the Seller's name and actual report time to the sales report. Do not record the same sale twice. The included demo Seller login is username `seller` and password `seller-demo`. Regular `wa.me` links cannot notify the site when a message is sent or confirmed. This is a static demo: account passwords and permissions are stored client-side and can be inspected or bypassed, and data is not synchronized to other devices. Use server-side authentication and a database before publishing for business use.
 
-The demo passwords are `tinex-demo` (Super admin) and `seller-demo` (Seller). They are visible in `js/admin.js` and are only browser-side gates; do not use them to protect a live store.
+The demo passwords are stored separately in `js/super-admin-auth.js` and `js/seller-auth.js`. They are for local testing only, not for protecting a live store.
 
 ## WhatsApp number used
 
@@ -67,10 +67,13 @@ tinex-store/
 ├── index.html          # Homepage
 ├── catalog.html        # Full product catalog + filters
 ├── contact.html        # Location, hours, contact form
-├── admin.html          # Inventory dashboard, product editor and sales reports
+├── admin.html          # Seller portal
+├── super-admin.html    # Separate Super admin portal
 ├── css/styles.css      # All styles
 ├── js/store.js         # Products data, cart, WhatsApp logic
-├── js/admin.js         # Inventory and sales management
+├── js/admin.js         # Shared inventory and sales dashboard
+├── js/seller-auth.js   # Seller demo login
+├── js/super-admin-auth.js # Super admin demo login
 └── README.md
 ```
 

@@ -1,11 +1,21 @@
 const LOW_STOCK_DEFAULT = 5;
-const DEMO_ADMIN_PASSWORD = "tinex-demo";
-const DEMO_SELLER_PASSWORD = "seller-demo";
 const ADMIN_SESSION_KEY = "tinex_admin_unlocked";
+const ADMIN_USER_SESSION_KEY = "tinex_admin_user";
+const SELLER_USERS_STORAGE_KEY = "tinex_seller_users";
+const DEFAULT_SELLER = {
+  id: "seller-demo",
+  name: "Demo Seller",
+  username: "seller",
+  password: "seller-demo",
+  active: true,
+  createdAt: "2026-01-01T00:00:00.000Z"
+};
 let sales = readSales();
 let activePeriod = "day";
 let productImage = "";
 let currentRole = null;
+let currentUser = null;
+let sellerUsers = readSellerUsers();
 
 function readSales() {
   const saved = localStorage.getItem(SALES_STORAGE_KEY);
@@ -13,6 +23,36 @@ function readSales() {
   const records = JSON.parse(saved);
   if (!Array.isArray(records)) throw new Error("Saved sales data must be a list.");
   return records;
+}
+
+function readSellerUsers() {
+  const saved = localStorage.getItem(SELLER_USERS_STORAGE_KEY);
+  if (!saved) return [{ ...DEFAULT_SELLER }];
+  const users = JSON.parse(saved);
+  if (!Array.isArray(users)) throw new Error("Saved seller accounts must be a list.");
+  return users;
+}
+
+function renderSellerUsers() {
+  const table = document.getElementById("seller-users-table");
+  if (!table) return;
+  table.innerHTML = sellerUsers.length ? sellerUsers.map(user => `<tr>
+    <td><strong>${escapeHTML(user.name)}</strong></td>
+    <td>${escapeHTML(user.username)}</td>
+    <td><span class="stock-status ${user.active ? "available" : "out"}">${user.active ? "Active" : "Access revoked"}</span></td>
+    <td>${formatAdminDate(user.createdAt || new Date().toISOString())}</td>
+    <td><button class="admin-edit-button" type="button" data-toggle-seller="${escapeHTML(user.id)}" data-active="${user.active ? "true" : "false"}">${user.active ? "Revoke access" : "Restore access"}</button></td>
+  </tr>`).join("") : `<tr><td colspan="5" class="admin-empty">No seller accounts yet.</td></tr>`;
+}
+
+function getSaleTypeLabel(sale) {
+  return sale.saleType === "whatsapp-order" || sale.orderId ? "WhatsApp order" : "Recorded sale";
+}
+
+function saveSellerUsers(nextUsers) {
+  localStorage.setItem(SELLER_USERS_STORAGE_KEY, JSON.stringify(nextUsers));
+  sellerUsers = nextUsers;
+  renderSellerUsers();
 }
 
 function showAdminMessage(message, type = "success") {
@@ -23,6 +63,67 @@ function showAdminMessage(message, type = "success") {
   showAdminMessage.timeout = window.setTimeout(() => {
     element.className = "admin-message";
   }, 5000);
+}
+
+function addSellerUser(event) {
+  event.preventDefault();
+  if (currentRole !== "super-admin") {
+    showAdminMessage("Only a Super admin can authorize sellers.", "error");
+    return;
+  }
+  const form = event.currentTarget;
+  const name = form.elements.name.value.trim();
+  const username = form.elements.username.value.trim();
+  const password = form.elements.password.value;
+  const confirmPassword = form.elements.confirmPassword.value;
+  if (!name || !/^[a-zA-Z0-9._-]{3,30}$/.test(username) || password.length < 8) {
+    showAdminMessage("Enter a name, a 3–30 character username, and a password of at least 8 characters.", "error");
+    return;
+  }
+  if (password !== confirmPassword) {
+    showAdminMessage("Passwords do not match. Confirm the seller password and try again.", "error");
+    form.elements.confirmPassword.focus();
+    return;
+  }
+  if (sellerUsers.some(user => user.username.toLowerCase() === username.toLowerCase())) {
+    showAdminMessage("That username is already assigned. Choose another.", "error");
+    return;
+  }
+  const user = {
+    id: `seller-${Date.now()}`,
+    name,
+    username,
+    password,
+    active: true,
+    createdAt: new Date().toISOString()
+  };
+  try {
+    saveSellerUsers([...sellerUsers, user]);
+  } catch (error) {
+    showAdminMessage(`Could not authorize seller: ${error.message}`, "error");
+    return;
+  }
+  form.reset();
+  showAdminMessage(`Seller ${name} authorized. Share the username and password privately.`);
+}
+
+function toggleSellerAccess(userId) {
+  if (currentRole !== "super-admin") {
+    showAdminMessage("Only a Super admin can change seller access.", "error");
+    return;
+  }
+  const user = sellerUsers.find(item => item.id === userId);
+  if (!user) {
+    showAdminMessage("Seller account not found.", "error");
+    return;
+  }
+  try {
+    saveSellerUsers(sellerUsers.map(item => item.id === userId ? { ...item, active: !item.active } : item));
+  } catch (error) {
+    showAdminMessage(`Could not update seller access: ${error.message}`, "error");
+    return;
+  }
+  showAdminMessage(`${user.name}'s access ${user.active ? "revoked" : "restored"}.`);
 }
 
 function getReorderAt(product) {
@@ -91,8 +192,9 @@ function renderDashboard() {
 
   const latest = [...sales].sort((a, b) => new Date(b.soldAt) - new Date(a.soldAt)).slice(0, 6);
   document.getElementById("recent-sales-table").innerHTML = latest.length ? latest.map(sale => `<tr>
-    <td><strong>${escapeHTML(sale.productTitle)}</strong><small>${escapeHTML(sale.code)}</small></td>
-    <td>${sale.quantity}</td><td>${formatPrice(getSaleRevenue(sale))}</td><td>${formatAdminDate(sale.soldAt)}</td>
+    <td><strong>${escapeHTML(sale.productTitle)}</strong><small>${escapeHTML(sale.code)}</small><span class="admin-sale-type${getSaleTypeLabel(sale) === "WhatsApp order" ? " whatsapp" : ""}">${getSaleTypeLabel(sale)}</span></td>
+    <td>${sale.quantity}</td><td>${formatPrice(getSaleRevenue(sale))}</td>
+    <td><strong>${escapeHTML(sale.sellerName || (sale.recordedBy === "super-admin" ? "Super admin" : sale.recordedBy || "Legacy sale"))}</strong><small>${formatAdminDate(sale.recordedAt || sale.soldAt, { dateStyle: "medium", timeStyle: "short" })}</small></td>
   </tr>`).join("") : `<tr><td colspan="4" class="admin-empty">No sales recorded yet.</td></tr>`;
 }
 
@@ -145,12 +247,12 @@ function renderInventory() {
   ).join("")}`;
   if (PRODUCTS.some(product => product.id === previousRestockProduct)) restockProduct.value = previousRestockProduct;
   restockProduct.disabled = !canEdit || PRODUCTS.length === 0;
-  if (currentRole === "super-admin" && !document.querySelector("#order-items .admin-order-item")) addOrderItem();
+  if (currentRole === "seller" && !document.querySelector("#order-items .admin-order-item")) addOrderItem();
   if (currentRole === "super-admin") renderDashboard();
 }
 
 function addOrderItem(productId = "", quantity = 1) {
-  if (currentRole !== "super-admin") return;
+  if (currentRole !== "seller") return;
   const row = document.createElement("div");
   row.className = "admin-order-item";
   row.innerHTML = `
@@ -181,7 +283,7 @@ function renderSales() {
   document.getElementById("period-orders").textContent = new Set(currentSales.map(sale => sale.orderId || sale.id)).size.toLocaleString("en-KE");
   const sorted = [...currentSales].sort((a, b) => new Date(b.soldAt) - new Date(a.soldAt));
   document.getElementById("sales-table").innerHTML = sorted.length ? sorted.map(sale => `<tr>
-    <td><strong>${escapeHTML(sale.productTitle)}</strong><small>${escapeHTML(sale.code)}</small></td>
+    <td><strong>${escapeHTML(sale.productTitle)}</strong><small>${escapeHTML(sale.code)}</small><span class="admin-sale-type${getSaleTypeLabel(sale) === "WhatsApp order" ? " whatsapp" : ""}">${getSaleTypeLabel(sale)}</span></td>
     <td>${sale.quantity}</td><td>${formatPrice(Number(sale.unitPrice))}</td>
     <td>${formatPrice(getSaleRevenue(sale))}</td>
     <td class="admin-sale-stock-status">
@@ -190,8 +292,9 @@ function renderSales() {
         ? `<button class="admin-edit-button admin-deduct-button" type="button" data-deduct-sale="${escapeHTML(sale.id)}">Deduct stock</button>`
         : ""}
     </td>
-    <td>${formatAdminDate(sale.soldAt)}</td>
+    <td><strong>${escapeHTML(sale.sellerName || (sale.recordedBy === "super-admin" ? "Super admin" : sale.recordedBy || "Legacy sale"))}</strong><small>Logged ${formatAdminDate(sale.recordedAt || sale.soldAt, { dateStyle: "medium", timeStyle: "short" })}</small></td>
   </tr>`).join("") : `<tr><td colspan="6" class="admin-empty">No recorded sales for this period.</td></tr>`;
+  if (currentRole === "super-admin") renderSellerUsers();
 }
 
 function renderAdmin() {
@@ -304,8 +407,21 @@ function addStock(event) {
 
 function confirmOrder(event) {
   event.preventDefault();
-  if (currentRole !== "super-admin") {
-    showAdminMessage("Only a Super admin can confirm orders and deduct stock.", "error");
+  if (currentRole !== "seller") {
+    showAdminMessage("Only a Seller can confirm WhatsApp orders.", "error");
+    return;
+  }
+  const authorizedUser = readSellerUsers().find(user =>
+    user.active && user.username.toLowerCase() === currentUser?.username.toLowerCase()
+  );
+  if (!authorizedUser) {
+    showAdminMessage("Your Seller access has been revoked. Sign in with an active account.", "error");
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+    currentRole = null;
+    currentUser = null;
+    document.getElementById("admin-dashboard").hidden = true;
+    document.getElementById("admin-login").hidden = false;
     return;
   }
   const form = event.currentTarget;
@@ -348,8 +464,11 @@ function confirmOrder(event) {
     quantity,
     unitPrice: Number(product.price),
     soldAt: soldAt.toISOString(),
+    recordedAt: new Date().toISOString(),
     stockDeducted: true,
-    recordedBy: "super-admin"
+    recordedBy: authorizedUser.username,
+    sellerName: authorizedUser.name,
+    saleType: "whatsapp-order"
   }));
   const nextSales = [...sales, ...orderSales];
   const nextProducts = PRODUCTS.map(product => quantities.has(product.id)
@@ -389,7 +508,7 @@ function confirmOrder(event) {
   document.getElementById("order-items").replaceChildren();
   addOrderItem();
   form.elements.soldAt.value = getNowForDateInput();
-  showAdminMessage("WhatsApp order confirmed and stock updated.");
+  showAdminMessage(`WhatsApp order confirmed by ${authorizedUser.name}; stock updated.`);
 }
 
 function recordSellerSale(event) {
@@ -399,6 +518,19 @@ function recordSellerSale(event) {
     return;
   }
   const form = event.currentTarget;
+  const authorizedUser = readSellerUsers().find(user =>
+    user.active && user.username.toLowerCase() === currentUser?.username.toLowerCase()
+  );
+  if (!authorizedUser) {
+    showAdminMessage("Your Seller access has been revoked. Sign in with an active account.", "error");
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+    currentRole = null;
+    currentUser = null;
+    document.getElementById("admin-dashboard").hidden = true;
+    document.getElementById("admin-login").hidden = false;
+    return;
+  }
   const product = PRODUCTS.find(item => item.id === form.elements.productId.value);
   const quantity = Number(form.elements.quantity.value);
   const soldAt = new Date(form.elements.soldAt.value);
@@ -418,9 +550,11 @@ function recordSellerSale(event) {
     quantity,
     unitPrice: Number(product.price),
     soldAt: soldAt.toISOString(),
+    recordedAt: new Date().toISOString(),
     stockDeducted: true,
     stockDeductedAt: new Date().toISOString(),
-    recordedBy: "seller"
+    recordedBy: authorizedUser.username,
+    sellerName: authorizedUser.name
   };
   const nextSales = [...sales, sale];
   const nextProducts = PRODUCTS.map(item => item.id === product.id
@@ -536,7 +670,7 @@ function loadImage(event) {
 }
 
 function setAdminPanel(name) {
-  if (currentRole !== "super-admin" && name === "overview") return;
+  if (currentRole !== "super-admin" && ["overview", "users"].includes(name)) return;
   document.querySelectorAll(".admin-tab").forEach(button => button.classList.toggle("active", button.dataset.panel === name));
   document.querySelectorAll(".admin-panel").forEach(panel => panel.classList.toggle("active", panel.id === `panel-${name}`));
 }
@@ -547,28 +681,33 @@ function setRoleAccess(role) {
   document.querySelectorAll("[data-super-admin-only]").forEach(element => {
     element.hidden = !isSuperAdmin;
   });
+  document.querySelectorAll("[data-seller-only]").forEach(element => {
+    element.hidden = role !== "seller";
+  });
   document.getElementById("seller-sale-entry").hidden = isSuperAdmin;
   document.getElementById("inventory-actions-heading").hidden = !isSuperAdmin;
   document.getElementById("admin-role-badge").textContent = isSuperAdmin ? "Super admin" : "Seller";
   document.getElementById("dashboard-title").textContent = isSuperAdmin ? "Inventory dashboard" : "Seller dashboard";
   document.getElementById("dashboard-caption").textContent = isSuperAdmin
     ? "Manage parts, check restock needs, and review sales."
-    : "View current inventory and record items sold. Your sales reports do not change stock.";
+    : `Signed in as ${currentUser?.name || "Seller"}. View inventory and record sales.`;
   document.getElementById("inventory-intro").textContent = isSuperAdmin
     ? "Add new parts or update their details, price, photo and quantity."
     : "Read-only inventory view. Contact a Super admin to change products or stock.";
   document.getElementById("sales-intro").textContent = isSuperAdmin
-    ? "Seller sales deduct stock automatically. Add stock here, or confirm WhatsApp orders that were not already reported."
-    : "Record one product and quantity at a time. Each sale immediately reduces inventory and appears in the sales report.";
+    ? "Review Seller-recorded sales and manage inventory. Sellers confirm WhatsApp orders and deduct stock."
+    : "Record item sales or confirm completed WhatsApp orders. Both actions immediately reduce inventory and appear in the sales report.";
   setAdminPanel(isSuperAdmin ? "overview" : "sales");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const expectedRole = document.body.dataset.adminRole;
   const login = document.getElementById("admin-login");
   const dashboard = document.getElementById("admin-dashboard");
   const lockButton = document.getElementById("admin-lock-button");
   const loginForm = document.getElementById("admin-login-form");
   const passwordInput = document.getElementById("admin-password");
+  const passwordToggle = document.querySelector(".admin-password-toggle");
   const loginError = document.getElementById("admin-login-error");
 
   function showDashboard(unlocked) {
@@ -587,30 +726,77 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loginForm.addEventListener("submit", event => {
     event.preventDefault();
-    const role = passwordInput.value === DEMO_ADMIN_PASSWORD
-      ? "super-admin"
-      : passwordInput.value === DEMO_SELLER_PASSWORD
-        ? "seller"
-        : null;
-    if (!role) {
+    const username = document.getElementById("admin-username")?.value || "";
+    let authenticatedUser;
+    try {
+      authenticatedUser = window.TINEX_ADMIN_AUTH?.authenticate(passwordInput.value, username);
+    } catch (error) {
+      loginError.textContent = `Could not load account data: ${error.message}`;
+      return;
+    }
+    const role = authenticatedUser?.role;
+    if (role !== expectedRole) {
       loginError.textContent = "That password is not correct. Try again.";
       passwordInput.focus();
       passwordInput.select();
       return;
     }
     currentRole = role;
+    currentUser = authenticatedUser;
     sessionStorage.setItem(ADMIN_SESSION_KEY, role);
+    sessionStorage.setItem(ADMIN_USER_SESSION_KEY, JSON.stringify(currentUser));
     loginError.textContent = "";
     showDashboard(true);
   });
   lockButton.addEventListener("click", () => {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
     currentRole = null;
+    currentUser = null;
     showDashboard(false);
   });
+  function bindPasswordToggle(toggle, input) {
+    toggle.addEventListener("click", () => {
+      const showPassword = input.type === "password";
+      input.type = showPassword ? "text" : "password";
+      toggle.setAttribute("aria-label", showPassword ? "Hide password" : "Show password");
+      toggle.setAttribute("aria-pressed", String(showPassword));
+      toggle.classList.toggle("is-visible", showPassword);
+    });
+  }
+  bindPasswordToggle(passwordToggle, passwordInput);
+  document.querySelectorAll("#seller-user-form .admin-password-toggle").forEach(toggle => {
+    bindPasswordToggle(toggle, document.getElementById(toggle.getAttribute("aria-controls")));
+  });
   const savedRole = sessionStorage.getItem(ADMIN_SESSION_KEY);
-  currentRole = savedRole === "true" ? "super-admin" : ["super-admin", "seller"].includes(savedRole) ? savedRole : null;
+  currentRole = savedRole === expectedRole ? savedRole : null;
+  if (currentRole) {
+    currentUser = JSON.parse(sessionStorage.getItem(ADMIN_USER_SESSION_KEY) || "null");
+    if (currentRole === "seller" && (!currentUser || !sellerUsers.some(user => user.active && user.username === currentUser.username))) {
+      currentRole = null;
+      currentUser = null;
+    }
+  }
+  if (!currentRole) {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+  }
   showDashboard(currentRole !== null);
+  window.addEventListener("storage", event => {
+    if (event.key !== SELLER_USERS_STORAGE_KEY || currentRole !== "seller") return;
+    sellerUsers = readSellerUsers();
+    const stillAuthorized = sellerUsers.some(user =>
+      user.active && user.username.toLowerCase() === currentUser?.username.toLowerCase()
+    );
+    if (stillAuthorized) return;
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_USER_SESSION_KEY);
+    currentRole = null;
+    currentUser = null;
+    dashboard.hidden = true;
+    login.hidden = false;
+    loginError.textContent = "Your Seller access was revoked. Contact the Super admin.";
+  });
 
   document.querySelectorAll(".admin-tab").forEach(button => button.addEventListener("click", () => setAdminPanel(button.dataset.panel)));
   document.querySelectorAll("[data-open-panel]").forEach(button => button.addEventListener("click", () => setAdminPanel(button.dataset.openPanel)));
@@ -621,6 +807,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("restock-form").addEventListener("submit", addStock);
   document.getElementById("sale-form").addEventListener("submit", confirmOrder);
   document.getElementById("seller-sale-form").addEventListener("submit", recordSellerSale);
+  document.getElementById("seller-user-form").addEventListener("submit", addSellerUser);
+  document.getElementById("seller-users-table").addEventListener("click", event => {
+    const button = event.target.closest("[data-toggle-seller]");
+    if (button) toggleSellerAccess(button.dataset.toggleSeller);
+  });
   document.getElementById("sales-table").addEventListener("click", event => {
     const button = event.target.closest("[data-deduct-sale]");
     if (button) deductReportedSale(button.dataset.deductSale);
@@ -660,8 +851,13 @@ window.addEventListener("tinex:inventory-updated", () => {
 });
 
 window.addEventListener("storage", event => {
-  if (event.key !== SALES_STORAGE_KEY) return;
   try {
+    if (event.key === SELLER_USERS_STORAGE_KEY) {
+      sellerUsers = readSellerUsers();
+      if (currentRole === "super-admin") renderSellerUsers();
+      return;
+    }
+    if (event.key !== SALES_STORAGE_KEY) return;
     const records = event.newValue ? JSON.parse(event.newValue) : [];
     if (!Array.isArray(records)) throw new Error("Saved sales data must be a list.");
     sales = records;
